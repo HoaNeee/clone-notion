@@ -3,7 +3,7 @@ export function getDOMRangeRect({
 	rootElement,
 }: {
 	nativeSelection: Selection | null;
-	rootElement: HTMLElement | null;
+	rootElement: HTMLElement | null | undefined;
 }) {
 	let rect;
 	if (
