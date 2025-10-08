@@ -173,6 +173,12 @@
 	pointer-events: none;
 }
 
+.editor-image {
+	/* do some thing here */
+	display: inline-block;
+	position: relative;
+}
+
 .editor-text-bold {
 	font-weight: bold;
 }
@@ -318,6 +324,10 @@
 	line-height: 1.6rem;
 }
 
+.editor-paragraph:last-child {
+	margin-bottom: 0;
+}
+
 .editor-heading-h1 {
 	font-size: 24px;
 	color: var(--primary);
@@ -370,7 +380,7 @@
 	padding: 0;
 	margin: 0;
 	margin-left: 16px;
-	list-style: circle;
+	list-style-type: disc;
 }
 
 .editor-listitem {
@@ -564,3 +574,15 @@ pre::-webkit-scrollbar-thumb {
 }
 
 /* floating-toolbar */
+
+.NotezImageCaption-Editor .editor-paragraph {
+	margin: 0;
+	padding: 0;
+	line-height: normal;
+}
+
+/* app */
+.nav-sidebar-focused {
+	background-color: #77c5f81a;
+	border-radius: 3px;
+}

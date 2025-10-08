@@ -7,7 +7,7 @@ export default function DashboardLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<SidebarProvider defaultOpen={false}>
+		<SidebarProvider>
 			<AppSidebar />
 			<SidebarInset>
 				<main className="w-full h-full">{children}</main>

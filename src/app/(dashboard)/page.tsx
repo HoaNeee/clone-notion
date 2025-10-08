@@ -1,4 +1,4 @@
-import MyEditor from "@/components/editor/my-editor";
+import MyEditor from "@/editor/my-editor";
 
 const DashboardPage = () => {
 	return (

@@ -1,5 +1,8 @@
 import React from "react";
-import { DropdownMenuItem, DropdownMenuLabel } from "../ui/dropdown-menu";
+import {
+	DropdownMenuItem,
+	DropdownMenuLabel,
+} from "../../components/ui/dropdown-menu";
 import {
 	blockTypeToBlockName,
 	useToolbarState,
@@ -16,6 +19,49 @@ import {
 	Quote,
 } from "lucide-react";
 
+export const keyBlocks = [
+	{
+		key: "paragraph",
+		title: "Normal",
+		icon: Baseline,
+	},
+	{
+		key: "h1",
+		title: "Heading 1",
+		icon: Heading1,
+	},
+	{
+		key: "h2",
+		title: "Heading 2",
+		icon: Heading2,
+	},
+	{
+		key: "h3",
+		title: "Heading 3",
+		icon: Heading3,
+	},
+	{
+		key: "ul",
+		title: "Bulleted List",
+		icon: List,
+	},
+	{
+		key: "ol",
+		title: "Numbered List",
+		icon: ListOrdered,
+	},
+	{
+		key: "code",
+		title: "Code Block",
+		icon: Code,
+	},
+	{
+		key: "quote",
+		title: "Quote Block",
+		icon: Quote,
+	},
+];
+
 const DropdownMenuBlock = ({
 	onBlockChange,
 }: {
@@ -24,48 +70,6 @@ const DropdownMenuBlock = ({
 	const {
 		toolbarState: { blockType },
 	} = useToolbarState();
-	const keyBlocks = [
-		{
-			key: "paragraph",
-			title: "Normal",
-			icon: Baseline,
-		},
-		{
-			key: "h1",
-			title: "Heading 1",
-			icon: Heading1,
-		},
-		{
-			key: "h2",
-			title: "Heading 2",
-			icon: Heading2,
-		},
-		{
-			key: "h3",
-			title: "Heading 3",
-			icon: Heading3,
-		},
-		{
-			key: "ul",
-			title: "Bulleted List",
-			icon: List,
-		},
-		{
-			key: "ol",
-			title: "Numbered List",
-			icon: ListOrdered,
-		},
-		{
-			key: "code",
-			title: "Code Block",
-			icon: Code,
-		},
-		{
-			key: "quote",
-			title: "Quote Block",
-			icon: Quote,
-		},
-	];
 
 	return (
 		<>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
 	$createListItemNode,
@@ -12,13 +13,16 @@ import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
 import {
 	$createParagraphNode,
 	$getSelection,
+	$insertNodes,
 	$isRangeSelection,
 	CAN_REDO_COMMAND,
 	CAN_UNDO_COMMAND,
+	COMMAND_PRIORITY_CRITICAL,
 	COMMAND_PRIORITY_LOW,
 	FORMAT_ELEMENT_COMMAND,
 	FORMAT_TEXT_COMMAND,
 	getDOMSelection,
+	LexicalEditor,
 	REDO_COMMAND,
 	SELECTION_CHANGE_COMMAND,
 	UNDO_COMMAND,
@@ -37,7 +41,11 @@ import {
 	Underline,
 	Undo2,
 } from "lucide-react";
-import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
+import {
+	$createHeadingNode,
+	$isHeadingNode,
+	$isQuoteNode,
+} from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import {
 	$createCodeNode,
@@ -53,6 +61,18 @@ import {
 } from "@lexical/link";
 import { useToolbarState } from "@/contexts/toolbar-context";
 import { formatCode } from "./utils";
+import { $createImageNode } from "../../nodes/image-node";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 function Divider() {
 	return <div className="divider" />;
@@ -62,16 +82,11 @@ type ListHeading = "h1" | "h2" | "h3";
 type ListTags = "ul" | "ol";
 type ListLanguagesCode = "javascript" | "java" | "c++";
 
-export default function ToolbarPlugin({
-	showToolbar,
-	setShowToolbar,
-}: {
-	showToolbar?: boolean;
-	setShowToolbar?: Dispatch<boolean>;
-}) {
-	const [editor] = useLexicalComposerContext();
+const ToolbarComponent = ({ editor }: { editor: LexicalEditor }) => {
 	const toolbarRef = useRef<HTMLDivElement | null>(null);
 	const { toolbarState } = useToolbarState();
+
+	const [files, setFiles] = useState<FileList | null>(null);
 
 	const list: ListHeading[] = ["h1", "h2", "h3"];
 	const listLanguageCode: ListLanguagesCode[] = ["c++", "java", "javascript"];
@@ -86,12 +101,81 @@ export default function ToolbarPlugin({
 	}
 
 	const hideToolbar = () => {
-		setShowToolbar?.(false);
+		// setShowToolbar?.(false);
 	};
 
 	return (
 		<div className={"toolbar"} ref={toolbarRef}>
 			<div className="flex items-center gap-3">
+				<button
+					className={`toolbar-item spaced disabled:text-gray-300 ${
+						toolbarState.isImageCaption || toolbarState.isImageNode
+							? "text-pink-500"
+							: ""
+					}`}
+					onClick={() => {
+						editor.update(() => {
+							const imageNode = $createImageNode({
+								altText: "image",
+								src: "https://playground.lexical.dev/assets/yellow-flower-vav9Hsve.jpg",
+							});
+							$insertNodes([imageNode]);
+						});
+					}}
+				>
+					Img
+				</button>
+				<Dialog>
+					<DialogTrigger asChild>
+						<button className={`toolbar-item spaced disabled:text-gray-300 `}>
+							upload
+						</button>
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Upload File</DialogTitle>
+							<DialogDescription />
+						</DialogHeader>
+						<div>
+							<input
+								onChange={(e) => {
+									const files = e.target.files;
+									setFiles(files);
+								}}
+								multiple
+								type="file"
+								name=""
+								id=""
+							/>
+						</div>
+						<DialogFooter>
+							<DialogClose asChild>
+								<Button variant={"outline"}>Cancel</Button>
+							</DialogClose>
+							<DialogClose asChild>
+								<Button
+									onClick={() => {
+										editor.update(() => {
+											if (files) {
+												for (const file of files) {
+													const src = URL.createObjectURL(file);
+													const imageNode = $createImageNode({
+														src,
+														altText: file.name,
+													});
+													$insertNodes([imageNode]);
+												}
+											}
+										});
+									}}
+								>
+									Confirm
+								</Button>
+							</DialogClose>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
 				<button
 					className="toolbar-item spaced disabled:text-gray-300"
 					onClick={() => {
@@ -263,6 +347,7 @@ export default function ToolbarPlugin({
 					>
 						Link
 					</button>
+
 					<Divider />
 				</>
 			) : (
@@ -320,4 +405,8 @@ export default function ToolbarPlugin({
 			</button>{" "}
 		</div>
 	);
+};
+
+export default function ToolbarPlugin({ editor }: { editor: LexicalEditor }) {
+	return <ToolbarComponent editor={editor} />;
 }

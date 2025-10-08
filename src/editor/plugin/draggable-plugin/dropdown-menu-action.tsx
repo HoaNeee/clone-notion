@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Dispatch, useEffect } from "react";
+import React, { Dispatch } from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -12,10 +12,9 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "../../../ui/dropdown-menu";
+} from "../../../components/ui/dropdown-menu";
 import { LexicalEditor } from "lexical";
 import { useToolbarState } from "@/contexts/toolbar-context";
-import { updateSelectionWithBlock } from "./utils";
 import {
 	deleteBlock,
 	formatBulletList,
@@ -26,7 +25,8 @@ import {
 	formatQuote,
 } from "../toolbar-plugin/utils";
 import { Braces, Check, Trash } from "lucide-react";
-import DropdownMenuBlock from "../../dropdown-menu-block";
+import DropdownMenuBlock from "../../components/dropdown-menu-block";
+import { useSelectionCustom } from "@/contexts/selection-custom-context";
 
 interface Props {
 	editor: LexicalEditor;
@@ -35,35 +35,38 @@ interface Props {
 	lockMenu?: () => void;
 	cursorBlock?: HTMLElement | null;
 	onClose?: () => void;
+	trigger?: React.ReactNode;
+	align?: "start" | "center" | "end";
+	alignOffset?: number;
+	side?: "left" | "right" | "top" | "bottom" | undefined;
+	sideOffset?: number;
 }
 
 const languages = ["javascript", "java", "c++"];
 
 const DropdownMenuAction = (props: Props) => {
-	const { open, setOpen, lockMenu, editor, cursorBlock, onClose } = props;
+	const {
+		open,
+		setOpen,
+		lockMenu,
+		editor,
+		onClose,
+		trigger,
+		align = "center",
+		alignOffset = -35,
+		side = "left",
+		sideOffset = 25,
+	} = props;
 	const {
 		toolbarState: { blockType, codeLanguage },
 	} = useToolbarState();
 
-	useEffect(() => {
-		if (!editor || !open) {
-			return;
-		}
-
-		updateSelectionWithBlock(editor, cursorBlock);
-	}, [open, editor, cursorBlock]);
+	const {
+		selectionState: { isSelectionManyBlock, isSelectionManyLineInListNode },
+	} = useSelectionCustom();
 
 	function onBlockChange(blockName: string) {
-		if (!editor) {
-			return;
-		}
-
-		onClose?.();
 		editor.update(() => {
-			if (!cursorBlock) {
-				return;
-			}
-
 			switch (blockName) {
 				case "paragraph":
 					formatParagraph(editor);
@@ -78,10 +81,20 @@ const DropdownMenuAction = (props: Props) => {
 					formatHeading(editor, blockType, "h3");
 					break;
 				case "ul":
-					formatBulletList(editor, blockType);
+					formatBulletList(
+						editor,
+						blockType,
+						isSelectionManyBlock,
+						isSelectionManyLineInListNode
+					);
 					break;
 				case "ol":
-					formatNumberedList(editor, blockType);
+					formatNumberedList(
+						editor,
+						blockType,
+						isSelectionManyBlock,
+						isSelectionManyLineInListNode
+					);
 					break;
 				case "code":
 					formatCode(editor, blockType);
@@ -96,18 +109,19 @@ const DropdownMenuAction = (props: Props) => {
 					break;
 			}
 		});
+		onClose?.();
 	}
 
 	return (
 		<DropdownMenu open={open} modal={false} onOpenChange={setOpen}>
 			<DropdownMenuTrigger asChild>
-				<span />
+				{trigger ? trigger : <span />}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
-				align="center"
-				alignOffset={-35}
-				sideOffset={35}
-				side="left"
+				align={align}
+				alignOffset={alignOffset}
+				sideOffset={sideOffset}
+				side={side}
 				className="w-56 min-h-20 z-[9999]"
 				onMouseMove={(e) => {
 					e.stopPropagation();
@@ -126,17 +140,19 @@ const DropdownMenuAction = (props: Props) => {
 							</DropdownMenuSubTrigger>
 							<DropdownMenuPortal>
 								<DropdownMenuSubContent sideOffset={5} className="z-[10000]">
-									{languages.map((lan, index) => (
+									{languages.map((lang, index) => (
 										<DropdownMenuItem
 											key={index}
 											className="capitalize cursor-pointer justify-between flex"
-											onClick={() => {
+											onClick={(e) => {
+												e.preventDefault();
+												e.stopPropagation();
 												onClose?.();
-												formatCode(editor, blockType, codeLanguage, lan);
+												formatCode(editor, blockType, codeLanguage, lang);
 											}}
 										>
-											{lan}
-											{codeLanguage === lan && <Check />}
+											{lang}
+											{codeLanguage === lang && <Check />}
 										</DropdownMenuItem>
 									))}
 								</DropdownMenuSubContent>

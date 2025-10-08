@@ -1,5 +1,6 @@
 import {
 	createContext,
+	Dispatch,
 	useCallback,
 	useContext,
 	useEffect,
@@ -7,18 +8,17 @@ import {
 } from "react";
 import {
 	$getSelection,
-	$isNodeSelection,
 	$isRangeSelection,
 	CAN_REDO_COMMAND,
 	CAN_UNDO_COMMAND,
-	COMMAND_PRIORITY_LOW,
+	COMMAND_PRIORITY_CRITICAL,
 	ElementFormatType,
+	LexicalEditor,
 	SELECTION_CHANGE_COMMAND,
 } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $findMatchingParent, mergeRegister } from "@lexical/utils";
+import { $isEditorIsNestedEditor, mergeRegister } from "@lexical/utils";
 import { $isHeadingNode, $isQuoteNode } from "@lexical/rich-text";
-import { $isLinkNode } from "@lexical/link";
 import { $isListNode } from "@lexical/list";
 import { $isCodeNode } from "@lexical/code";
 
@@ -51,6 +51,8 @@ const initialState = {
 	isLowercase: false,
 	isUppercase: false,
 	isCapitalize: false,
+	isImageNode: false,
+	isImageCaption: false,
 	blockType: "paragraph " as keyof typeof blockTypeToBlockName,
 	elementFormat: "left" as ElementFormatType,
 	codeLanguage: "",
@@ -66,30 +68,45 @@ type ToolbarContextType = {
 		key: Key,
 		value: ToolbarStateValue<Key>
 	): void;
+	activeEditor: LexicalEditor;
 };
 
 const Context = createContext<ToolbarContextType | undefined>(undefined);
 
-export const ToolbarContext = ({ children }: { children: React.ReactNode }) => {
-	const [toolbarState, setToolbarState] = useState(initialState);
-	const [editor] = useLexicalComposerContext();
-
-	const updateToolbarState = useCallback(
-		(key: ToolbarStateKey, value: ToolbarStateValue<ToolbarStateKey>) => {
-			setToolbarState((prev) => {
-				return {
-					...prev,
-					[key]: value,
-				};
-			});
-		},
-		[]
-	);
-
+const useUpdateToolbar = ({
+	editor,
+	updateToolbarState,
+	setActiveEditor,
+	activeEditor,
+}: {
+	editor: LexicalEditor;
+	updateToolbarState<Key extends ToolbarStateKey>(
+		key: Key,
+		value: ToolbarStateValue<Key>
+	): void;
+	setActiveEditor: Dispatch<LexicalEditor>;
+	activeEditor: LexicalEditor;
+}) => {
 	const $updateToolbar = useCallback(() => {
 		const selection = $getSelection();
 
 		if ($isRangeSelection(selection)) {
+			const root = editor.getRootElement();
+			const rootImageCaption = activeEditor.getRootElement();
+
+			if (editor !== activeEditor && $isEditorIsNestedEditor(activeEditor)) {
+				if (
+					rootImageCaption &&
+					root?.className !== rootImageCaption?.className
+				) {
+					updateToolbarState("isImageCaption", true);
+					updateToolbarState("isImageNode", true);
+				}
+			} else {
+				updateToolbarState("isImageCaption", false);
+				updateToolbarState("isImageNode", false);
+			}
+
 			// Update text format
 			updateToolbarState("isBold", selection.hasFormat("bold"));
 			updateToolbarState("isItalic", selection.hasFormat("italic"));
@@ -106,67 +123,108 @@ export const ToolbarContext = ({ children }: { children: React.ReactNode }) => {
 			//other
 			const node = selection.anchor.getNode();
 
-			const block = node.getTopLevelElementOrThrow();
+			const block = node.getTopLevelElement();
 
-			if ($isHeadingNode(block)) {
-				const tag = block.getTag();
-				updateToolbarState("blockType", tag);
-			} else if ($isListNode(block)) {
-				const tag = block.getTag();
-				updateToolbarState("blockType", tag);
-			} else if ($isCodeNode(block)) {
-				updateToolbarState("blockType", "code");
-				const language = block.getLanguage() as string;
-				updateToolbarState("codeLanguage", language);
-			} else if ($isQuoteNode(block)) {
-				updateToolbarState("blockType", "quote");
-			} else {
-				updateToolbarState("blockType", "paragraph");
-				updateToolbarState("codeLanguage", "");
+			if (block) {
+				if ($isHeadingNode(block)) {
+					const tag = block.getTag();
+					updateToolbarState("blockType", tag);
+				} else if ($isListNode(block)) {
+					const tag = block.getTag();
+					updateToolbarState("blockType", tag);
+				} else if ($isCodeNode(block)) {
+					updateToolbarState("blockType", "code");
+					const language = block.getLanguage() as string;
+					updateToolbarState("codeLanguage", language);
+				} else if ($isQuoteNode(block)) {
+					updateToolbarState("blockType", "quote");
+				} else {
+					updateToolbarState("blockType", "paragraph");
+					updateToolbarState("codeLanguage", "");
+				}
 			}
 		}
-	}, [updateToolbarState]);
+	}, [updateToolbarState, editor, activeEditor]);
+
+	useEffect(() => {
+		return editor.registerCommand(
+			SELECTION_CHANGE_COMMAND,
+			(_, newEdittor) => {
+				$updateToolbar();
+				setActiveEditor(newEdittor);
+				return false;
+			},
+			COMMAND_PRIORITY_CRITICAL
+		);
+	}, [editor, setActiveEditor, $updateToolbar]);
+
+	useEffect(() => {
+		return activeEditor.getEditorState().read(
+			() => {
+				$updateToolbar();
+			},
+			{ editor: activeEditor }
+		);
+	}, [activeEditor, $updateToolbar]);
 
 	useEffect(() => {
 		return mergeRegister(
-			editor.registerUpdateListener(({ editorState }) => {
+			activeEditor.registerUpdateListener(({ editorState }) => {
 				editorState.read(
 					() => {
 						$updateToolbar();
 					},
-					{ editor }
+					{ editor: activeEditor }
 				);
 			}),
-			editor.registerCommand(
-				SELECTION_CHANGE_COMMAND,
-				() => {
-					$updateToolbar();
-					return false;
-				},
-				COMMAND_PRIORITY_LOW
-			),
-			editor.registerCommand(
+			activeEditor.registerCommand(
 				CAN_UNDO_COMMAND,
 				(payload) => {
 					updateToolbarState("canUndo", payload);
 					return false;
 				},
-				COMMAND_PRIORITY_LOW
+				COMMAND_PRIORITY_CRITICAL
 			),
-			editor.registerCommand(
+			activeEditor.registerCommand(
 				CAN_REDO_COMMAND,
 				(payload) => {
 					updateToolbarState("canRedo", payload);
 					return false;
 				},
-				COMMAND_PRIORITY_LOW
+				COMMAND_PRIORITY_CRITICAL
 			)
 		);
-	}, [editor, $updateToolbar, updateToolbarState]);
+	}, [activeEditor, editor, $updateToolbar, updateToolbarState]);
+};
+
+export const ToolbarContext = ({ children }: { children: React.ReactNode }) => {
+	const [toolbarState, setToolbarState] = useState(initialState);
+	const [editor] = useLexicalComposerContext();
+	const [activeEditor, setActiveEditor] = useState<LexicalEditor>(editor);
+
+	const updateToolbarState = useCallback(
+		(key: ToolbarStateKey, value: ToolbarStateValue<ToolbarStateKey>) => {
+			setToolbarState((prev) => {
+				return {
+					...prev,
+					[key]: value,
+				};
+			});
+		},
+		[]
+	);
+
+	useUpdateToolbar({
+		editor,
+		activeEditor,
+		updateToolbarState,
+		setActiveEditor,
+	});
 
 	const value = {
 		toolbarState,
 		updateToolbarState,
+		activeEditor,
 	};
 
 	return <Context.Provider value={value}>{children}</Context.Provider>;

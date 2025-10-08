@@ -25,13 +25,13 @@ import {
 	$isLinkNode,
 	TOGGLE_LINK_COMMAND,
 } from "@lexical/link";
-import { setFloatingElemPositionForLinkEditor } from "../utils/set-floating-edit-link";
-import { getSelectedNode } from "../utils/get-selected-node";
-import { getDOMRangeRect } from "../utils/get-dom-range-rect";
+import { setFloatingElemPositionForLinkEditor } from "./utils";
+import { getSelectedNode } from "../../utils/get-selected-node";
+import { getDOMRangeRect } from "../../utils/get-dom-range-rect";
 import { useToolbarState } from "@/contexts/toolbar-context";
-import { setSelectionFromBaseSelection } from "../utils";
+import { setSelectionFromBaseSelection } from "../../utils/set-selection";
 import {
-	CheckCircle,
+	CircleCheck,
 	CircleX,
 	LucideProps,
 	PencilLine,
@@ -236,7 +236,7 @@ function FloatingEditLink({
 							}}
 							Icon={CircleX}
 						/>
-						<ButtonIcon onClick={handleLinkSubmission} Icon={CheckCircle} />
+						<ButtonIcon onClick={handleLinkSubmission} Icon={CircleCheck} />
 					</div>
 				</div>
 			) : (

@@ -2,17 +2,15 @@
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useCallback, useEffect } from "react";
-import { updateSelectionWithBlock } from "./draggable-plugin/utils";
 import { $getSelection, $isRangeSelection } from "lexical";
+import { useFloatingToolbar } from "@/contexts/floating-toolbar-context";
+import { setFocusCaretSelectionWithNearestNodeFromCursorBlock } from "../utils/set-selection";
 
-const ClickOutSidePlugin = ({
-	anchorElem,
-	openningFloatingToolbar,
-}: {
-	anchorElem?: HTMLElement;
-	openningFloatingToolbar: boolean;
-}) => {
+const ClickOutSidePlugin = ({ anchorElem }: { anchorElem?: HTMLElement }) => {
 	const [editor] = useLexicalComposerContext();
+	const {
+		floatingToolbarState: { openningFloatingToolbar },
+	} = useFloatingToolbar();
 
 	const blur = useCallback(
 		(e: MouseEvent) => {
@@ -23,6 +21,12 @@ const ClickOutSidePlugin = ({
 			const toolbarElement = document.querySelector(".toolbar");
 			const editLinkElement = document.querySelector(".floating-edit-link");
 			const notOutSideElems = document.querySelectorAll(".not-outside");
+
+			const body = document.body;
+
+			if (body.style.pointerEvents === "none") {
+				return;
+			}
 
 			editor.update(() => {
 				const selection = $getSelection();
@@ -57,7 +61,6 @@ const ClickOutSidePlugin = ({
 					}
 
 					if (!anchorElem.contains(e.target)) {
-						console.log("mouse up outside plugin");
 						const X = e.clientX;
 						const Y = e.clientY;
 
@@ -66,6 +69,7 @@ const ClickOutSidePlugin = ({
 						if (!root) {
 							return;
 						}
+						console.log("mouse up outside plugin");
 						const nodes = root.childNodes;
 						let isRight = false;
 						const nodeMaps = new Map<number, HTMLElement>();
@@ -94,7 +98,7 @@ const ClickOutSidePlugin = ({
 							}
 						});
 
-						updateSelectionWithBlock(
+						setFocusCaretSelectionWithNearestNodeFromCursorBlock(
 							editor,
 							cursorBlock,
 							isRight ? "end" : "start"

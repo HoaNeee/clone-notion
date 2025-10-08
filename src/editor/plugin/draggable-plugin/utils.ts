@@ -4,37 +4,7 @@ import {
 	LexicalEditor,
 } from "lexical";
 
-export function updateSelectionWithBlock(
-	editor: LexicalEditor,
-	cursorBlock?: HTMLElement | null,
-	direc: "start" | "end" = "end"
-) {
-	if (!cursorBlock) {
-		return;
-	}
-
-	editor.update(() => {
-		const node = $getNearestNodeFromDOMNode(cursorBlock);
-
-		if (!node) {
-			return;
-		}
-
-		const block = node.getTopLevelElementOrThrow();
-
-		if ($isElementNode(block)) {
-			if (direc === "end") {
-				block.selectEnd();
-			} else if (direc === "start") {
-				block.selectStart();
-			}
-		}
-
-		return block;
-	});
-}
-
-export function getBlockSelection(
+export function getBlockFromCursorBlock(
 	editor: LexicalEditor,
 	cursorBlock?: HTMLElement | null
 ) {

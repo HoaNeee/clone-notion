@@ -1,8 +1,5 @@
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
 	$getSelection,
-	$isElementNode,
-	$isLineBreakNode,
 	$isRangeSelection,
 	COMMAND_PRIORITY_LOW,
 	FORMAT_TEXT_COMMAND,
@@ -18,16 +15,16 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { setFloatingElemPosition } from "../utils/set-floating-toolbar";
+import { setFloatingElemPosition } from "./utils";
 import { mergeRegister } from "@lexical/utils";
 import { $isCodeNode } from "@lexical/code";
-import { getDOMRangeRect } from "../utils/get-dom-range-rect";
+import { getDOMRangeRect } from "../../utils/get-dom-range-rect";
 import {
 	blockTypeToBlockName,
 	useToolbarState,
 } from "@/contexts/toolbar-context";
 import { createPortal } from "react-dom";
-import { getTranslate } from "./draggable-plugin/utils";
+import { getTranslate } from "../draggable-plugin/utils";
 import { Button } from "@/components/ui/button";
 import {
 	Bold,
@@ -36,6 +33,7 @@ import {
 	CaseUpper,
 	ChevronDown,
 	Code,
+	Ellipsis,
 	Italic,
 	Link,
 	Strikethrough,
@@ -44,7 +42,6 @@ import {
 import { TOGGLE_LINK_COMMAND } from "@lexical/link";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { TooltipContent } from "@radix-ui/react-tooltip";
-
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -58,26 +55,26 @@ import {
 	formatNumberedList,
 	formatParagraph,
 	formatQuote,
-} from "./toolbar-plugin/utils";
+} from "../toolbar-plugin/utils";
 import MyOverlay from "@/components/overlay";
-import DropdownMenuBlock from "../dropdown-menu-block";
+import DropdownMenuBlock from "../../components/dropdown-menu-block";
 import { Separator } from "@/components/ui/separator";
+import DropdownMenuAction from "../draggable-plugin/dropdown-menu-action";
+import { useSelectionCustom } from "@/contexts/selection-custom-context";
+import {
+	setFocusCaretSelectionWithNearestNodeFromCursorBlock,
+	setFocusCaretSelectionWithParent,
+} from "../../utils/set-selection";
+import { useFloatingToolbar } from "@/contexts/floating-toolbar-context";
+import lodash from "lodash";
 
 const FloatingToolbar = ({
 	anchorElem,
 	editor,
-	canShow,
-	setCanShow,
-	showWithContent,
-	setShowWithContent,
 	setIsEditLink,
 }: {
 	anchorElem?: HTMLElement;
 	editor: LexicalEditor;
-	canShow: boolean;
-	setCanShow: Dispatch<boolean>;
-	showWithContent: boolean;
-	setShowWithContent: Dispatch<boolean>;
 	isEditLink: boolean;
 	setIsEditLink: Dispatch<boolean>;
 }) => {
@@ -95,19 +92,36 @@ const FloatingToolbar = ({
 			isUppercase,
 			isCapitalize,
 			blockType,
+			isImageNode,
 		},
 	} = useToolbarState();
 
-	const [openMenuBlock, setOpenMenuBlock] = useState(false);
-	const [isSelectionManyBlock, setIsSelectionManyBlock] = useState(false);
+	const {
+		selectionState: { isSelectionManyBlock, isSelectionManyLineInListNode },
+	} = useSelectionCustom();
+
+	const {
+		floatingToolbarState: { canShow, openningFloatingToolbar },
+		updateFloatingToolbarState,
+		onRef,
+	} = useFloatingToolbar();
 
 	const setHideToolbar = useCallback(() => {
-		setCanShow(false);
-		setShowWithContent(false);
-	}, [setCanShow, setShowWithContent]);
+		updateFloatingToolbarState("canShow", false);
+		updateFloatingToolbarState("isSelectionHasTextContent", false);
+	}, [updateFloatingToolbarState]);
+
+	const [openMenuBlock, setOpenMenuBlock] = useState(false);
+	const [openMenuAction, setOpenMenuAction] = useState(false);
+	const [cursorBlock, setCursorBlock] = useState<HTMLElement | undefined>();
 
 	const $updateFloatingToolbar = useCallback(() => {
 		if (!anchorElem) {
+			return;
+		}
+		const floatingToolbar = floatingToolbarRef.current;
+
+		if (!floatingToolbar) {
 			return;
 		}
 
@@ -116,27 +130,6 @@ const FloatingToolbar = ({
 		if ($isRangeSelection(selection)) {
 			const node = selection.anchor.getNode();
 			const parent = node.getParent();
-
-			const unionNode = new Set();
-
-			selection.getNodes().forEach((node) => {
-				if ($isElementNode(node)) {
-					const block = node.getTopLevelElementOrThrow();
-					unionNode.add(block);
-				}
-			});
-
-			if (unionNode.size > 1) {
-				setIsSelectionManyBlock(true);
-			} else {
-				setIsSelectionManyBlock(false);
-			}
-
-			const floatingToolbar = floatingToolbarRef.current;
-
-			if (!floatingToolbar) {
-				return;
-			}
 
 			if ($isCodeNode(node) || $isCodeNode(parent)) {
 				hideFloatingToolbar(floatingToolbar);
@@ -154,7 +147,7 @@ const FloatingToolbar = ({
 				}) as DOMRect;
 
 				setFloatingElemPosition(rect, floatingToolbar, anchorElem, isLink);
-				setShowWithContent(true);
+				updateFloatingToolbarState("isSelectionHasTextContent", true);
 			} else {
 				setHideToolbar();
 				hideFloatingToolbar(floatingToolbar);
@@ -162,7 +155,7 @@ const FloatingToolbar = ({
 		} else {
 			setHideToolbar();
 		}
-	}, [editor, anchorElem, isLink, setHideToolbar, setShowWithContent]);
+	}, [editor, anchorElem, isLink, setHideToolbar, updateFloatingToolbarState]);
 
 	useEffect(() => {
 		return mergeRegister(
@@ -185,7 +178,7 @@ const FloatingToolbar = ({
 		);
 	}, [editor, $updateFloatingToolbar]);
 
-	///fixed floating toolbar
+	//fixed floating toolbar
 	useEffect(() => {
 		const floatingToolbar = floatingToolbarRef.current;
 
@@ -221,9 +214,7 @@ const FloatingToolbar = ({
 			}
 		};
 
-		const openning = canShow && showWithContent;
-
-		if (openning) {
+		if (openningFloatingToolbar) {
 			window.addEventListener("scroll", update);
 		} else {
 			window.removeEventListener("scroll", update);
@@ -233,7 +224,7 @@ const FloatingToolbar = ({
 		return () => {
 			window.removeEventListener("scroll", update);
 		};
-	}, [canShow, showWithContent, anchorElem]);
+	}, [canShow, openningFloatingToolbar, anchorElem]);
 
 	const hideFloatingToolbar = (floatingToolbar: HTMLElement) => {
 		floatingToolbar.style.opacity = "0";
@@ -246,19 +237,6 @@ const FloatingToolbar = ({
 		}
 
 		editor.update(() => {
-			const selection = $getSelection();
-			if ($isRangeSelection(selection)) {
-				const textContent = selection.getTextContent();
-
-				if (textContent) {
-					const node = selection.anchor.getNode();
-					const parent = node.getParent();
-					if (parent) {
-						parent.selectEnd();
-					}
-				}
-			}
-
 			switch (blockName) {
 				case "paragraph":
 					formatParagraph(editor);
@@ -273,10 +251,20 @@ const FloatingToolbar = ({
 					formatHeading(editor, blockType, "h3");
 					break;
 				case "ul":
-					formatBulletList(editor, blockType);
+					formatBulletList(
+						editor,
+						blockType,
+						isSelectionManyBlock,
+						isSelectionManyLineInListNode
+					);
 					break;
 				case "ol":
-					formatNumberedList(editor, blockType);
+					formatNumberedList(
+						editor,
+						blockType,
+						isSelectionManyBlock,
+						isSelectionManyLineInListNode
+					);
 					break;
 				case "code":
 					formatCode(editor, blockType);
@@ -289,6 +277,9 @@ const FloatingToolbar = ({
 					break;
 				default:
 					break;
+			}
+			if (!isSelectionManyLineInListNode) {
+				setFocusCaretSelectionWithParent(editor, "end", true);
 			}
 			setHideToolbar();
 		});
@@ -351,30 +342,50 @@ const FloatingToolbar = ({
 		},
 	];
 
-	const openning = canShow && showWithContent;
+	function handleShowMenuAction() {
+		editor.update(() => {
+			const selection = $getSelection();
+			if ($isRangeSelection(selection)) {
+				const node = selection.anchor.getNode();
+				if (node) {
+					const dom = editor.getElementByKey(node.getKey());
+					if (dom) {
+						setCursorBlock(dom);
+					}
+				}
+			}
+		});
+		setOpenMenuAction(true);
+		setHideToolbar();
+	}
 
 	return (
 		<>
 			{openMenuBlock && <MyOverlay onClick={() => setOpenMenuBlock(false)} />}
+			{openMenuAction && <MyOverlay onClick={() => setOpenMenuAction(false)} />}
 			<div
-				className={`${
-					canShow ? "" : "cursor-none pointer-events-none"
-				} opacity-0 z-[9997] absolute top-0 left-0 rounded-md bg-transparent ${
-					openning ? "shadow-[0_5px_10px_#0000004d]" : ""
+				className={`opacity-0 z-[9997] absolute top-0 left-0 rounded-md bg-transparent ${
+					openningFloatingToolbar
+						? "shadow-[0_5px_10px_#0000004d]"
+						: "cursor-none pointer-events-none"
 				}`}
-				ref={floatingToolbarRef}
+				ref={(val) => {
+					floatingToolbarRef.current = val;
+					onRef(val);
+				}}
 				onMouseDown={(e) => {
 					e.preventDefault();
 				}}
 			>
 				<div
 					className={`${
-						openning
+						openningFloatingToolbar
 							? "opacity-100 bg-white rounded-md shadow-2xl flex items-center gap-1 w-full"
 							: "opacity-0"
 					} p-1`}
 				>
-					{openning && !isSelectionManyBlock && (
+					{/* menu block */}
+					{openningFloatingToolbar && !isSelectionManyBlock && !isImageNode && (
 						<Tooltip delayDuration={500} disableHoverableContent>
 							<TooltipTrigger asChild>
 								<div className="not-outside flex items-center justify-center">
@@ -405,6 +416,7 @@ const FloatingToolbar = ({
 										style={{
 											height: 24,
 										}}
+										className="mx-2"
 									/>
 								</div>
 							</TooltipTrigger>
@@ -424,32 +436,37 @@ const FloatingToolbar = ({
 					{buttons.map(({ key, icon: Icon, active, title }, index) => (
 						<Tooltip key={index} delayDuration={500} disableHoverableContent>
 							<TooltipTrigger asChild>
-								<Button
-									key={index}
-									variant={"ghost"}
-									onClick={() => {
-										if (key === "insertLink") {
-											if (isLink) {
-												editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
-												setIsEditLink(false);
-											} else {
-												editor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://");
-												setIsEditLink(true);
+								{key === "insertLink" && isImageNode ? null : (
+									<Button
+										key={index}
+										variant={"ghost"}
+										onClick={() => {
+											if (key === "insertLink") {
+												if (isLink) {
+													editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
+													setIsEditLink(false);
+												} else {
+													editor.dispatchCommand(
+														TOGGLE_LINK_COMMAND,
+														"https://"
+													);
+													setIsEditLink(true);
+												}
+												return;
 											}
-											return;
-										}
 
-										editor.dispatchCommand(
-											FORMAT_TEXT_COMMAND,
-											key as TextFormatType
-										);
-									}}
-									className={`${
-										active && "shadow bg-gray-200 hover:bg-gray-300"
-									}`}
-								>
-									<Icon />
-								</Button>
+											editor.dispatchCommand(
+												FORMAT_TEXT_COMMAND,
+												key as TextFormatType
+											);
+										}}
+										className={`${
+											active && "shadow bg-gray-200 hover:bg-gray-300"
+										}`}
+									>
+										<Icon />
+									</Button>
+								)}
 							</TooltipTrigger>
 							<TooltipContent
 								align="center"
@@ -461,28 +478,73 @@ const FloatingToolbar = ({
 							</TooltipContent>
 						</Tooltip>
 					))}
+
+					{/* menu action */}
+					{!isSelectionManyBlock && !isImageNode && (
+						<>
+							{openningFloatingToolbar && (
+								<Separator
+									orientation="vertical"
+									style={{
+										height: 24,
+									}}
+									className="mx-2"
+								/>
+							)}
+							<Button
+								variant={"ghost"}
+								className="text-gray-500"
+								onClick={handleShowMenuAction}
+							>
+								<Ellipsis />
+							</Button>
+							<DropdownMenuAction
+								open={openMenuAction}
+								setOpen={(val) => {
+									setOpenMenuAction(val);
+								}}
+								editor={editor}
+								onClose={() => {
+									setOpenMenuAction(false);
+									setCursorBlock(undefined);
+									setFocusCaretSelectionWithNearestNodeFromCursorBlock(
+										editor,
+										cursorBlock,
+										"end"
+									);
+								}}
+								side="right"
+							/>
+						</>
+					)}
 				</div>
 			</div>
 		</>
 	);
 };
 
-const useFloatingToolbar = ({
-	anchorElem,
-	setOpenningFloatingToolbar,
+const FloatingToolbarPlugin = ({
+	anchorElem = document.body,
 	isEditLink,
 	setIsEditLink,
+	editor,
 }: {
 	anchorElem?: HTMLElement;
-	setOpenningFloatingToolbar: Dispatch<boolean>;
 	isEditLink: boolean;
 	setIsEditLink: Dispatch<boolean>;
+	editor: LexicalEditor;
 }) => {
-	const [editor] = useLexicalComposerContext();
-	const [canShow, setCanShow] = useState(false);
-	const [showWithContent, setShowWithContent] = useState(false);
+	const {
+		floatingToolbarState: { isSelectionHasTextContent, canShow },
+		updateFloatingToolbarState,
+	} = useFloatingToolbar();
 
-	//selection when pointer was be outsite
+	const debounceShowFloatingToolbar = React.useRef(
+		lodash.debounce(() => {
+			updateFloatingToolbarState("openningFloatingToolbar", true);
+		}, 200)
+	).current;
+
 	useEffect(() => {
 		if (!anchorElem) {
 			return;
@@ -492,21 +554,25 @@ const useFloatingToolbar = ({
 
 		const mouseUp = () => {
 			if (!canShow && !isEditLink) {
-				setCanShow(true);
+				updateFloatingToolbarState("canShow", true);
 			}
 		};
 
-		setOpenningFloatingToolbar(canShow && showWithContent);
+		if (canShow && isSelectionHasTextContent) {
+			debounceShowFloatingToolbar();
+		} else {
+			updateFloatingToolbarState("openningFloatingToolbar", false);
+		}
 
 		const keyup = (e: KeyboardEvent) => {
 			if (e.ctrlKey && e.key === "a") {
-				setCanShow(true);
+				updateFloatingToolbarState("canShow", true);
 			}
 		};
 
 		element.addEventListener("keyup", keyup);
 
-		if (showWithContent) {
+		if (isSelectionHasTextContent) {
 			element.addEventListener("mouseup", mouseUp);
 		} else {
 			element.removeEventListener("mouseup", mouseUp);
@@ -517,55 +583,31 @@ const useFloatingToolbar = ({
 			element.removeEventListener("keyup", keyup);
 		};
 	}, [
-		editor,
 		canShow,
-		showWithContent,
+		isSelectionHasTextContent,
 		anchorElem,
-		setOpenningFloatingToolbar,
 		isEditLink,
+		updateFloatingToolbarState,
+		debounceShowFloatingToolbar,
 	]);
 
-	//
 	useEffect(() => {
 		if (isEditLink) {
-			setCanShow(false);
+			updateFloatingToolbarState("canShow", false);
 		} else {
-			setCanShow(true);
+			updateFloatingToolbarState("canShow", true);
 		}
-	}, [isEditLink]);
+	}, [updateFloatingToolbarState, isEditLink]);
 
 	return createPortal(
 		<FloatingToolbar
 			anchorElem={anchorElem}
 			editor={editor}
-			canShow={canShow}
-			setCanShow={setCanShow}
-			setShowWithContent={setShowWithContent}
-			showWithContent={showWithContent}
 			isEditLink={isEditLink}
 			setIsEditLink={setIsEditLink}
 		/>,
 		anchorElem as HTMLElement
 	);
-};
-
-const FloatingToolbarPlugin = ({
-	anchorElem,
-	setOpenningFloatingToolbar,
-	isEditLink,
-	setIsEditLink,
-}: {
-	anchorElem?: HTMLElement;
-	setOpenningFloatingToolbar: Dispatch<boolean>;
-	isEditLink: boolean;
-	setIsEditLink: Dispatch<boolean>;
-}) => {
-	return useFloatingToolbar({
-		anchorElem,
-		setOpenningFloatingToolbar,
-		isEditLink,
-		setIsEditLink,
-	});
 };
 
 export default FloatingToolbarPlugin;
