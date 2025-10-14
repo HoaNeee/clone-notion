@@ -1,7 +1,13 @@
 import {
+	$createRangeSelection,
+	$getNearestNodeFromDOMNode,
 	$getSelection,
 	$isRangeSelection,
+	$setSelection,
 	COMMAND_PRIORITY_LOW,
+	DRAGOVER_COMMAND,
+	DRAGSTART_COMMAND,
+	DROP_COMMAND,
 	FORMAT_TEXT_COMMAND,
 	getDOMSelection,
 	LexicalEditor,
@@ -59,7 +65,7 @@ import {
 import MyOverlay from "@/components/overlay";
 import DropdownMenuBlock from "../../components/dropdown-menu-block";
 import { Separator } from "@/components/ui/separator";
-import DropdownMenuAction from "../draggable-plugin/dropdown-menu-action";
+import DropdownMenuAction from "../draggable-plugin/components/dropdown-menu-action";
 import { useSelectionCustom } from "@/contexts/selection-custom-context";
 import {
 	setFocusCaretSelectionWithNearestNodeFromCursorBlock,
@@ -67,6 +73,7 @@ import {
 } from "../../utils/set-selection";
 import { useFloatingToolbar } from "@/contexts/floating-toolbar-context";
 import lodash from "lodash";
+import { $isImageNode } from "@/editor/nodes/image-node";
 
 const FloatingToolbar = ({
 	anchorElem,
@@ -591,6 +598,77 @@ const FloatingToolbarPlugin = ({
 		debounceShowFloatingToolbar,
 	]);
 
+	function $onDragStart() {
+		const selection = $getSelection();
+		if ($isRangeSelection(selection)) {
+			const textContent = selection.getTextContent();
+			if (textContent) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function $onDragOver(e: DragEvent) {
+		//Do some thing here
+
+		if (!canDrop(e)) {
+			e.preventDefault();
+		}
+
+		return false;
+	}
+
+	function $onDrop(e: DragEvent) {
+		const selection = $getSelection();
+		if ($isRangeSelection(selection)) {
+			const node = selection.anchor.getNode();
+
+			if ($isCodeNode(node) || $isCodeNode(node.getParent())) {
+				return false;
+			}
+
+			const textContent = selection.getTextContent();
+			if (textContent) {
+				const range = getDragSelection(e);
+				if (range !== null && e.dataTransfer && canDrop(e)) {
+					selection.removeText();
+					const rangeSelection = $createRangeSelection();
+					rangeSelection.applyDOMRange(range);
+					$setSelection(rangeSelection);
+					rangeSelection.insertText(
+						e.dataTransfer?.getData("text/plain") || ""
+					);
+				}
+
+				return true;
+			}
+		}
+		return false;
+	}
+
+	useEffect(() => {
+		if (!editor) {
+			return;
+		}
+
+		return mergeRegister(
+			editor.registerCommand(
+				DRAGSTART_COMMAND,
+				$onDragStart,
+				COMMAND_PRIORITY_LOW
+			),
+
+			editor.registerCommand(
+				DRAGOVER_COMMAND,
+				$onDragOver,
+				COMMAND_PRIORITY_LOW
+			),
+
+			editor.registerCommand(DROP_COMMAND, $onDrop, COMMAND_PRIORITY_LOW)
+		);
+	}, [editor]);
+
 	useEffect(() => {
 		if (isEditLink) {
 			updateFloatingToolbarState("canShow", false);
@@ -609,5 +687,31 @@ const FloatingToolbarPlugin = ({
 		anchorElem as HTMLElement
 	);
 };
+
+const getDragSelection = (e: DragEvent) => {
+	const caretPostion = document.caretPositionFromPoint(e.clientX, e.clientY);
+
+	if (caretPostion) {
+		const { offsetNode, offset } = caretPostion;
+		const range = document.createRange();
+		range.setStart(offsetNode, offset);
+		range.setEnd(offsetNode, offset);
+		return range;
+	}
+
+	return null;
+};
+
+function canDrop(e: DragEvent) {
+	if (e.target instanceof Node) {
+		const node = $getNearestNodeFromDOMNode(e.target);
+
+		if (!node || $isImageNode(node)) {
+			return false;
+		}
+	}
+
+	return true;
+}
 
 export default FloatingToolbarPlugin;

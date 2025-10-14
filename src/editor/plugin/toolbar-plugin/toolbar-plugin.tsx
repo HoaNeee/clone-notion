@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
 	$createListItemNode,
@@ -19,6 +18,7 @@ import {
 	CAN_UNDO_COMMAND,
 	COMMAND_PRIORITY_CRITICAL,
 	COMMAND_PRIORITY_LOW,
+	ElementFormatType,
 	FORMAT_ELEMENT_COMMAND,
 	FORMAT_TEXT_COMMAND,
 	getDOMSelection,
@@ -30,15 +30,25 @@ import {
 import { Dispatch, useCallback, useEffect, useRef, useState } from "react";
 import {
 	Bold,
+	ChevronDown,
 	Code,
+	FileImage,
+	Image,
+	ImageIcon,
 	Italic,
+	Link,
+	Logs,
+	Plus,
+	Redo,
 	Redo2,
+	SquareMenu,
 	Strikethrough,
 	TextAlignCenter,
 	TextAlignEnd,
 	TextAlignJustify,
 	TextAlignStart,
 	Underline,
+	Undo,
 	Undo2,
 } from "lucide-react";
 import {
@@ -59,7 +69,10 @@ import {
 	$isLinkNode,
 	TOGGLE_LINK_COMMAND,
 } from "@lexical/link";
-import { useToolbarState } from "@/contexts/toolbar-context";
+import {
+	blockTypeToBlockName,
+	useToolbarState,
+} from "@/contexts/toolbar-context";
 import { formatCode } from "./utils";
 import { $createImageNode } from "../../nodes/image-node";
 import {
@@ -73,197 +86,284 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import DropdownMenuBlock from "@/editor/components/dropdown-menu-block";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getIconFromKey } from "@/utils/key-blocks";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FileUploadComponent } from "@/components/file-upload-component";
+import { listLanguageCode } from "@/editor/utils";
+import DialogInsertImage from "@/editor/components/dialog-insert-image";
+
+type KeyBlock = keyof typeof blockTypeToBlockName;
 
 function Divider() {
-	return <div className="divider" />;
+	return <Separator orientation="vertical" className="mx-1.5 min-h-6" />;
 }
 
-type ListHeading = "h1" | "h2" | "h3";
-type ListTags = "ul" | "ol";
-type ListLanguagesCode = "javascript" | "java" | "c++";
+function DropdownToolbarBlock({ blockType }: { blockType: KeyBlock }) {
+	const Icon = getIconFromKey(blockType);
+
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button size={"sm"} variant={"ghost"} className="">
+					<div className="font-normal capitalize justify-between flex min-w-32 items-center">
+						<div className="flex items-center gap-2">
+							<Icon />
+							<span>{blockTypeToBlockName[blockType as KeyBlock]} </span>
+						</div>
+						<ChevronDown className="" />
+					</div>
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align="start"
+				className="w-56 min-h-20 z-[9999] not-outside"
+			>
+				<DropdownMenuGroup>
+					<DropdownMenuBlock
+						onBlockChange={(type) => {
+							console.log(type);
+						}}
+						size="medium"
+						selected="background"
+					/>
+				</DropdownMenuGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+const MenuFormatText = ({ editor }: { editor: LexicalEditor }) => {
+	const {
+		toolbarState: { isLink, blockType, codeLanguage },
+	} = useToolbarState();
+
+	if (blockType === "code") {
+		return (
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button className={``} variant={"ghost"}>
+						<div className="font-normal capitalize justify-between flex min-w-22 items-center">
+							<div className="flex items-center gap-2">
+								<span>{codeLanguage}</span>
+							</div>
+							<ChevronDown className="" />
+						</div>
+					</Button>
+				</DropdownMenuTrigger>
+
+				<DropdownMenuContent>
+					<DropdownMenuGroup>
+						{listLanguageCode.map(({ key, name }, index) => (
+							<DropdownMenuItem
+								key={index}
+								className="text-base capitalize cursor-pointer"
+								onClick={() => {
+									formatCode(editor, "", "", key);
+								}}
+							>
+								{name}
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		);
+	}
+
+	return (
+		<div className="flex items-center">
+			<Button
+				onClick={() => {
+					editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
+				}}
+				variant={"ghost"}
+				className={``}
+				aria-label="Format Bold"
+			>
+				<Bold size={22} strokeWidth={2} />
+			</Button>
+			<Button
+				variant={"ghost"}
+				onClick={() => {
+					editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic");
+				}}
+				className={``}
+				aria-label="Format Italics"
+			>
+				<Italic size={22} />
+			</Button>
+			<Button
+				variant={"ghost"}
+				onClick={() => {
+					editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline");
+				}}
+				className={``}
+				aria-label="Format Underline"
+			>
+				<Underline size={22} />
+			</Button>
+			<Button
+				variant={"ghost"}
+				onClick={() => {
+					editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
+				}}
+				className={``}
+				aria-label="Format Strikethrough"
+			>
+				<Strikethrough size={22} />
+			</Button>
+			<Button
+				variant={"ghost"}
+				onClick={() => {
+					editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code");
+				}}
+				className={``}
+				aria-label="Format CodeBlock"
+			>
+				<Code size={22} />
+			</Button>
+			<Button
+				className={``}
+				variant={"ghost"}
+				onClick={() => {
+					if (isLink) {
+						editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
+					} else {
+						editor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://");
+					}
+				}}
+			>
+				<Link />
+			</Button>
+		</div>
+	);
+};
+
+const DropdownMenuFormatAlign = ({ editor }: { editor: LexicalEditor }) => {
+	const {
+		toolbarState: { elementFormat },
+	} = useToolbarState();
+
+	const aligns = [
+		{ COMAND: "left", ICON: TextAlignStart, LABEL: "Left Align" },
+		{ COMAND: "center", ICON: TextAlignCenter, LABEL: "Center Align" },
+		{ COMAND: "right", ICON: TextAlignEnd, LABEL: "Right Align" },
+		{ COMAND: "justify", ICON: TextAlignJustify, LABEL: "Justify Align" },
+	];
+
+	const getItemActiveFromKey = (key: string) => {
+		return aligns.find((item) => item.COMAND === key) || aligns[0];
+	};
+
+	const Icon = getItemActiveFromKey(elementFormat).ICON;
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button className={``} variant={"ghost"}>
+					<div className="font-normal capitalize justify-between flex min-w-32 items-center">
+						<div className="flex items-center gap-2">
+							<Icon />
+							<span>{getItemActiveFromKey(elementFormat).LABEL}</span>
+						</div>
+						<ChevronDown className="" />
+					</div>
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-46">
+				<DropdownMenuGroup>
+					{aligns.map(({ COMAND, ICON: Icon, LABEL }, index) => (
+						<DropdownMenuItem
+							key={index}
+							onClick={() => {
+								editor.dispatchCommand(
+									FORMAT_ELEMENT_COMMAND,
+									COMAND as ElementFormatType
+								);
+							}}
+							className="cursor-pointer"
+						>
+							<Icon />
+							{LABEL}
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+};
+
+const DropdownMenuInsertSpecialBlock = ({
+	editor,
+}: {
+	editor: LexicalEditor;
+}) => {
+	const [openDialogInsertImage, setOpenDialogInsertImage] = useState(false);
+
+	return (
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button className={`font-normal`} variant={"ghost"}>
+						<Plus />
+						<span>Insert</span>
+						<ChevronDown className="" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="start" className="min-w-46">
+					<DropdownMenuGroup>
+						<DropdownMenuItem
+							className="cursor-pointer text-base capitalize"
+							onClick={() => setOpenDialogInsertImage(true)}
+						>
+							<FileImage className="size-5" />
+							Image
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<DialogInsertImage
+				editor={editor}
+				open={openDialogInsertImage}
+				setOpen={setOpenDialogInsertImage}
+			/>
+		</>
+	);
+};
 
 const ToolbarComponent = ({ editor }: { editor: LexicalEditor }) => {
 	const toolbarRef = useRef<HTMLDivElement | null>(null);
 	const { toolbarState } = useToolbarState();
 
-	const [files, setFiles] = useState<FileList | null>(null);
-
-	const list: ListHeading[] = ["h1", "h2", "h3"];
-	const listLanguageCode: ListLanguagesCode[] = ["c++", "java", "javascript"];
-
-	function onClickHeading(tag: ListHeading) {
-		editor.update(() => {
-			const selection = $getSelection();
-			if ($isRangeSelection(selection)) {
-				$setBlocksType(selection, () => $createHeadingNode(tag));
-			}
-		});
-	}
-
-	const hideToolbar = () => {
-		// setShowToolbar?.(false);
-	};
-
 	return (
 		<div className={"toolbar"} ref={toolbarRef}>
-			<div className="flex items-center gap-3">
-				<button
-					className={`toolbar-item spaced disabled:text-gray-300 ${
-						toolbarState.isImageCaption || toolbarState.isImageNode
-							? "text-pink-500"
-							: ""
-					}`}
-					onClick={() => {
-						editor.update(() => {
-							const imageNode = $createImageNode({
-								altText: "image",
-								src: "https://playground.lexical.dev/assets/yellow-flower-vav9Hsve.jpg",
-							});
-							$insertNodes([imageNode]);
-						});
-					}}
-				>
-					Img
-				</button>
-				<Dialog>
-					<DialogTrigger asChild>
-						<button className={`toolbar-item spaced disabled:text-gray-300 `}>
-							upload
-						</button>
-					</DialogTrigger>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Upload File</DialogTitle>
-							<DialogDescription />
-						</DialogHeader>
-						<div>
-							<input
-								onChange={(e) => {
-									const files = e.target.files;
-									setFiles(files);
-								}}
-								multiple
-								type="file"
-								name=""
-								id=""
-							/>
-						</div>
-						<DialogFooter>
-							<DialogClose asChild>
-								<Button variant={"outline"}>Cancel</Button>
-							</DialogClose>
-							<DialogClose asChild>
-								<Button
-									onClick={() => {
-										editor.update(() => {
-											if (files) {
-												for (const file of files) {
-													const src = URL.createObjectURL(file);
-													const imageNode = $createImageNode({
-														src,
-														altText: file.name,
-													});
-													$insertNodes([imageNode]);
-												}
-											}
-										});
-									}}
-								>
-									Confirm
-								</Button>
-							</DialogClose>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-
-				<button
-					className="toolbar-item spaced disabled:text-gray-300"
-					onClick={() => {
-						editor.update(() => {
-							const selection = $getSelection();
-							if ($isRangeSelection(selection)) {
-								$setBlocksType(selection, () => $createParagraphNode());
-							}
-						});
-						hideToolbar();
-					}}
-				>
-					A
-				</button>
-				{list.map((tag, index) => (
-					<button
-						key={index}
-						className={`toolbar-item spaced disabled:text-gray-300 ${
-							tag === toolbarState.blockType ? "text-pink-500" : ""
-						}`}
-						onClick={() => {
-							onClickHeading(tag);
-							hideToolbar();
-						}}
-					>
-						{tag}
-					</button>
-				))}
-			</div>
-			<button
-				className={`toolbar-item spaced disabled:text-gray-300 ${
-					toolbarState.blockType === "ul" ? "text-pink-500" : ""
-				}`}
-				onClick={() => {
-					editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-					hideToolbar();
-				}}
-			>
-				UL
-			</button>
-			<button
-				className={`toolbar-item spaced disabled:text-gray-300 ${
-					toolbarState.blockType === "ol" ? "text-pink-500" : ""
-				}`}
-				onClick={() => {
-					editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-					hideToolbar();
-				}}
-			>
-				OL
-			</button>
-			<button
-				className={`toolbar-item spaced disabled:text-gray-300 ${
-					toolbarState.blockType === "code" ? "text-pink-500" : ""
-				}`}
-				onClick={() => {
-					editor.update(() => {
-						let selection = $getSelection();
-						if (!selection) {
-							return;
-						}
-						if (!$isRangeSelection(selection) || selection.isCollapsed()) {
-							$setBlocksType(selection, () => $createCodeNode("javascript"));
-						} else {
-							const textContent = selection.getTextContent();
-							const codeNode = $createCodeNode("javascript");
-							selection.insertNodes([codeNode]);
-							selection = $getSelection();
-							if ($isRangeSelection(selection)) {
-								selection.insertRawText(textContent);
-							}
-						}
-					});
-				}}
-			>
-				Code block
-			</button>
-			<button
+			<Button
 				disabled={!toolbarState.canUndo}
 				onClick={() => {
 					editor.dispatchCommand(UNDO_COMMAND, undefined);
 				}}
-				className="toolbar-item spaced disabled:text-gray-300"
+				size={"sm"}
+				variant={"ghost"}
 				aria-label="Undo"
 			>
 				<Undo2 />
-			</button>
-			<button
+			</Button>
+			<Button
 				disabled={!toolbarState.canRedo}
 				onClick={() => {
 					editor.dispatchCommand(REDO_COMMAND, undefined);
@@ -272,141 +372,34 @@ const ToolbarComponent = ({ editor }: { editor: LexicalEditor }) => {
 				aria-label="Redo"
 			>
 				<Redo2 />
-			</button>
+			</Button>
 			<Divider />
-			{!(toolbarState.blockType === "code") ? (
-				<>
-					<button
-						onClick={() => {
-							editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
-						}}
-						className={
-							"toolbar-item spaced " + (toolbarState.isBold ? "active" : "")
-						}
-						aria-label="Format Bold"
-					>
-						<Bold size={22} strokeWidth={2} />
-					</button>
-					<button
-						onClick={() => {
-							editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic");
-						}}
-						className={
-							"toolbar-item spaced " + (toolbarState.isItalic ? "active" : "")
-						}
-						aria-label="Format Italics"
-					>
-						<Italic size={22} />
-					</button>
-					<button
-						onClick={() => {
-							editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline");
-						}}
-						className={
-							"toolbar-item spaced " +
-							(toolbarState.isUnderline ? "active" : "")
-						}
-						aria-label="Format Underline"
-					>
-						<Underline size={22} />
-					</button>
-					<button
-						onClick={() => {
-							editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
-						}}
-						className={
-							"toolbar-item spaced " +
-							(toolbarState.isStrikethrough ? "active" : "")
-						}
-						aria-label="Format Strikethrough"
-					>
-						<Strikethrough size={22} />
-					</button>
-					<button
-						onClick={() => {
-							editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code");
-						}}
-						className={
-							"toolbar-item spaced " + (toolbarState.isCode ? "active" : "")
-						}
-						aria-label="Format CodeBlock"
-					>
-						<Code size={22} />
-					</button>
-					<button
-						className={`toolbar-item spaced disabled:text-gray-300 ${
-							toolbarState.isLink ? "text-pink-500" : ""
-						}`}
-						onClick={() => {
-							if (toolbarState.isLink) {
-								editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
-							} else {
-								editor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://");
-							}
-						}}
-					>
-						Link
-					</button>
-
-					<Divider />
-				</>
-			) : (
-				<div className="flex items-center gap-2">
-					{listLanguageCode.map((lang, index) => (
-						<button
-							key={index}
-							className={`toolbar-item spaced capitalize ${
-								toolbarState.codeLanguage === lang ? "text-pink-500" : ""
-							}`}
-							onClick={() => {
-								formatCode(editor, "", "", lang);
-							}}
-						>
-							{lang}
-						</button>
-					))}
-				</div>
-			)}
-			<button
-				onClick={() => {
-					editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left");
-				}}
-				className="toolbar-item spaced"
-				aria-label="Left Align"
-			>
-				<TextAlignStart size={22} />
-			</button>
-			<button
-				onClick={() => {
-					editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center");
-				}}
-				className="toolbar-item spaced"
-				aria-label="Center Align"
-			>
-				<TextAlignCenter size={22} />
-			</button>
-			<button
-				onClick={() => {
-					editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right");
-				}}
-				className="toolbar-item spaced"
-				aria-label="Right Align"
-			>
-				<TextAlignEnd size={22} />
-			</button>
-			<button
-				onClick={() => {
-					editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify");
-				}}
-				className="toolbar-item"
-				aria-label="Justify Align"
-			>
-				<TextAlignJustify size={22} />
-			</button>{" "}
+			<DropdownToolbarBlock blockType={toolbarState.blockType} />
+			<Divider />
+			<MenuFormatText editor={editor} />
+			<Divider />
+			<DropdownMenuInsertSpecialBlock editor={editor} />
+			<Divider />
+			<DropdownMenuFormatAlign editor={editor} />
 		</div>
 	);
 };
 
 export default function ToolbarPlugin({ editor }: { editor: LexicalEditor }) {
-	return <ToolbarComponent editor={editor} />;
+	return (
+		// <Popover>
+		// 	<PopoverTrigger asChild className="not-outside">
+		// 		<Button
+		// 			className="fixed top-14 right-0 rounded-full"
+		// 			size={"icon"}
+		// 			variant={"outline"}
+		// 		>
+		// 			<SquareMenu />
+		// 		</Button>
+		// 	</PopoverTrigger>
+		// 	<PopoverContent side="left" className="w-full p-0">
+		// 	</PopoverContent>
+		// </Popover>
+		<ToolbarComponent editor={editor} />
+	);
 }

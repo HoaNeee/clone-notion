@@ -38,6 +38,7 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { editorImageCaptionName } from "@/lib/contants";
 import { useToolbarState } from "@/contexts/toolbar-context";
 import { useFloatingToolbar } from "@/contexts/floating-toolbar-context";
+import { postImage } from "@/utils/request";
 
 interface ImageProps {
 	src: string;
@@ -67,21 +68,57 @@ const useSuspenseImage = (props: ImageProps) => {
 			});
 		}
 
-		if (status === "uploading") {
-			setTimeout(() => {
+		async function uploadImage() {
+			try {
+				let file: File | null = null;
+
+				editor.getEditorState().read(() => {
+					const node = $getNodeByKey(nodeKey);
+					if ($isImageNode(node)) {
+						file = node.getCurrentFile() || null;
+					}
+				});
+
+				if (!file) {
+					return;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+
+				//fake upload
+				//upload file here and get the src
+				//const res = await postImage('thumbnail', file);
+				//console.log(res);
+
+				const src = URL.createObjectURL(file);
+
+				//fake upload result
+				const rand = Math.floor(Math.random() * 10);
+
+				if (rand >= 2) {
+					//set src here
+					editor.update(() => {
+						const node = $getNodeByKey(nodeKey);
+						if ($isImageNode(node)) {
+							node.setSrc(src || node.getSrc());
+							node.setStatus("success");
+						}
+					});
+				} else {
+					throw new Error("Upload failed");
+				}
+			} catch (error) {
+				console.log(error);
 				editor.update(() => {
 					const node = $getNodeByKey(nodeKey);
 					if ($isImageNode(node)) {
-						const rand = Math.floor(Math.random() * 10);
-						if (rand >= 4) {
-							node.setSrc(node.getSrc());
-							node.setStatus("success");
-						} else {
-							node.setStatus("failed");
-						}
+						node.setStatus("failed");
 					}
 				});
-			}, 2000);
+			}
+		}
+
+		if (status === "uploading") {
+			uploadImage();
 		}
 	}, [status, nodeKey, editor]);
 

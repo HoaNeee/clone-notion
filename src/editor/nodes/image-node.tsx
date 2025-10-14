@@ -44,6 +44,7 @@ export interface ImagePayload {
 	width?: number;
 	captionsEnabled?: boolean;
 	status?: ImageStatus;
+	current_file?: File;
 }
 
 function isGoogleDocCheckboxImg(img: HTMLImageElement): boolean {
@@ -88,6 +89,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 	__showCaption: boolean;
 	__caption: LexicalEditor;
 	__status: ImageStatus;
+	__current_file?: File;
 	// Captions cannot yet be used within editor cells
 	__captionsEnabled: boolean;
 
@@ -106,7 +108,8 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 			node.__caption,
 			node.__captionsEnabled,
 			node.__key,
-			node.__status
+			node.__status,
+			node.__current_file
 		);
 	}
 
@@ -165,7 +168,8 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 		caption?: LexicalEditor,
 		captionsEnabled?: boolean,
 		key?: NodeKey,
-		status?: ImageStatus
+		status?: ImageStatus,
+		current_file?: File
 	) {
 		super(key);
 		this.__src = src;
@@ -190,6 +194,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 				theme: imageCaptionTheme,
 			});
 		this.__captionsEnabled = captionsEnabled || captionsEnabled === undefined;
+		this.__current_file = current_file;
 	}
 
 	exportJSON(): SerializedImageNode {
@@ -258,6 +263,10 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 		return this.__status;
 	}
 
+	getCurrentFile(): File | undefined {
+		return this.__current_file;
+	}
+
 	decorate(): JSX.Element {
 		return (
 			<ImageComponent
@@ -288,6 +297,7 @@ export function $createImageNode({
 	caption,
 	key,
 	status = "initial",
+	current_file,
 }: ImagePayload): ImageNode {
 	return $applyNodeReplacement(
 		new ImageNode(
@@ -300,7 +310,8 @@ export function $createImageNode({
 			caption,
 			captionsEnabled,
 			key,
-			status
+			status,
+			current_file
 		)
 	);
 }

@@ -12,7 +12,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu";
+} from "../../../../components/ui/dropdown-menu";
 import { LexicalEditor } from "lexical";
 import { useToolbarState } from "@/contexts/toolbar-context";
 import {
@@ -23,9 +23,9 @@ import {
 	formatNumberedList,
 	formatParagraph,
 	formatQuote,
-} from "../toolbar-plugin/utils";
+} from "../../toolbar-plugin/utils";
 import { Braces, Check, Trash } from "lucide-react";
-import DropdownMenuBlock from "../../components/dropdown-menu-block";
+import DropdownMenuBlock from "../../../components/dropdown-menu-block";
 import { useSelectionCustom } from "@/contexts/selection-custom-context";
 
 interface Props {

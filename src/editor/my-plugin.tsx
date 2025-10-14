@@ -20,6 +20,14 @@ import ImagePlugin from "./plugin/image-plugin";
 import DragDropPaste from "./plugin/drag-drop-paste-plugin";
 import { useToolbarState } from "@/contexts/toolbar-context";
 import ComponentPickerPlugin from "./plugin/component-picker-plugin";
+import { Button } from "@/components/ui/button";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { SquareMenu } from "lucide-react";
+import CodeActionMenuPlugin from "./plugin/code-action-plugin/code-action-pluin";
 
 const DraggableBlockPlugin = dynamic(
 	() => import("./plugin/draggable-plugin/draggable-block-plugin"),
@@ -27,11 +35,13 @@ const DraggableBlockPlugin = dynamic(
 );
 
 const MyPlugin = () => {
+	const { activeEditor } = useToolbarState();
+
 	const [floatingAnchorElement, setFloatingAnchorElement] =
 		useState<HTMLDivElement>();
 	const [isEditLink, setIsEditLink] = useState(false);
 	const [openMenuDrag, setOpenMenuDrag] = useState(false);
-	const { activeEditor } = useToolbarState();
+	const [openToolbar, setOpenToolbar] = useState(false);
 
 	const onRef = (_element: HTMLDivElement | null) => {
 		if (_element) {
@@ -42,6 +52,7 @@ const MyPlugin = () => {
 	return (
 		<div className="editor-container">
 			<ToolbarPlugin editor={activeEditor} />
+
 			<div className="editor-inner max-w-4xl mx-auto">
 				<RichTextPlugin
 					contentEditable={
@@ -100,6 +111,7 @@ const MyPlugin = () => {
 						{!openMenuDrag && (
 							<ClickOutSidePlugin anchorElem={floatingAnchorElement} />
 						)}
+						<CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
 					</>
 				)}
 				<SelectionCustomPlugin />

@@ -5,10 +5,8 @@ import {
 	SidebarHeader,
 	SidebarRail,
 } from "./ui/sidebar";
-import SidebarNavMain from "./sidebar-nav-main";
 import AppSidebarHeader from "./sidebar-header";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
+import SidebarNavMainContainer from "./sidebar-nav-main";
 
 const AppSidebar = () => {
 	return (
@@ -17,7 +15,7 @@ const AppSidebar = () => {
 				<AppSidebarHeader />
 			</SidebarHeader>
 			<SidebarContent>
-				<SidebarNavMain />
+				<SidebarNavMainContainer />
 			</SidebarContent>
 			<SidebarRail />
 		</Sidebar>

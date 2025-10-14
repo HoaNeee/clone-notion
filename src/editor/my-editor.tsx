@@ -1,98 +1,98 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React from "react";
-import {
-	EditorState,
-	EditorThemeClasses,
-	HTMLConfig,
-	Klass,
-	LexicalEditor,
-	LexicalNode,
-	LexicalNodeReplacement,
-	ParagraphNode,
-	TextNode,
-} from "lexical";
-import { useEffect, useState } from "react";
-
+import React, { useCallback, useEffect, useRef } from "react";
+import { EditorState } from "lexical";
+import { useState } from "react";
 import {
 	InitialEditorStateType,
 	LexicalComposer,
 } from "@lexical/react/LexicalComposer";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { ListItemNode, ListNode } from "@lexical/list";
-import { CodeHighlightNode, CodeNode } from "@lexical/code";
-import { LinkNode, AutoLinkNode } from "@lexical/link";
 import { ToolbarContext } from "@/contexts/toolbar-context";
 import { SelectionCustomContext } from "@/contexts/selection-custom-context";
 import { FloatingToolbarContext } from "@/contexts/floating-toolbar-context";
-import { ImageNode } from "./nodes/image-node";
-import { rootTheme } from "./theme/editor-theme";
-import { editorRootName } from "@/lib/contants";
 import MyPlugin from "./my-plugin";
-import { sampleData } from "@/data/sampleStateData";
+import MyOnChangePlugin from "./plugin/my-on-change-plugin";
+import { initialConfig } from "./configs/initial-config";
+import lodash from "lodash";
+import { useFolderState } from "@/contexts/folder-context";
+import { TNote } from "@/types/note.type";
+import { defaultEditorState } from "@/lib/contants";
 
-const MyEditor = () => {
-	const [editorState, setEditorState] = useState<string>(sampleData);
+const MyEditor = ({
+	editorStateInitial,
+	note,
+}: {
+	editorStateInitial: string;
+	note: TNote;
+}) => {
+	const [editorState, setEditorState] = useState<string>(
+		editorStateInitial || defaultEditorState
+	);
 
-	function onError(error: any) {
-		console.error(error);
-	}
+	const { onUpdate } = useFolderState();
 
-	const initialConfig: Readonly<{
-		namespace: string;
-		nodes?: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement>;
-		onError: (error: Error, editor: LexicalEditor) => void;
-		editable?: boolean;
-		theme?: EditorThemeClasses;
-		editorState?: InitialEditorStateType;
-		html?: HTMLConfig;
-	}> = {
-		namespace: `${editorRootName}`,
-		theme: rootTheme,
-		onError,
-		nodes: [
-			HeadingNode,
-			ParagraphNode,
-			TextNode,
-			ListNode,
-			ListItemNode,
-			CodeNode,
-			CodeHighlightNode,
-			LinkNode,
-			AutoLinkNode,
-			QuoteNode,
-			ImageNode,
-		],
-		editorState,
+	const handleSave = async (state: string) => {
+		//save data here
+		const payload = {
+			content: state,
+		};
+
+		try {
+			// await onUpdate(note.id, payload, "note");
+		} catch (error) {
+			console.error("Error saving note:", error);
+		}
 	};
 
-	function onChange(editorState: EditorState) {
-		const editorStateJSON = editorState.toJSON();
+	const debounceSave = useRef(
+		lodash.debounce((state) => {
+			console.log("Auto saving...");
+			handleSave(state);
+		}, 1000)
+	).current;
 
-		// However, we still have a JavaScript object, so we need to convert it to an actual string with JSON.stringify
-		const json = JSON.stringify(editorStateJSON);
-		setEditorState(json);
-		// console.log("call change");
-	}
+	const onChange = useCallback(
+		async (editorStateParam: EditorState) => {
+			const editorStateJSON = editorStateParam.toJSON();
 
-	function MyOnChangePlugin({
-		onChange,
-	}: {
-		onChange: (editor: EditorState) => void;
-	}) {
-		const [editor] = useLexicalComposerContext();
-		useEffect(() => {
-			return editor.registerUpdateListener(({ editorState }) => {
-				onChange(editorState);
-			});
-		}, [editor, onChange]);
-		return null;
-	}
+			// However, we still have a JavaScript object, so we need to convert it to an actual string with JSON.stringify
+			const json = JSON.stringify(editorStateJSON);
+
+			if (json !== editorState) {
+				setEditorState(json);
+
+				debounceSave(json);
+			}
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[editorState]
+	);
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+
+		const keyboardSave = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+				e.preventDefault();
+
+				console.log("Manually saving...");
+				debounceSave.flush();
+			}
+		};
+
+		window.addEventListener("keydown", keyboardSave);
+		return () => {
+			window.removeEventListener("keydown", keyboardSave);
+		};
+	}, [debounceSave]);
 
 	return (
-		<LexicalComposer initialConfig={initialConfig}>
+		<LexicalComposer
+			initialConfig={{
+				...initialConfig,
+				editorState: editorState as InitialEditorStateType,
+			}}
+		>
 			<ToolbarContext>
 				<SelectionCustomContext>
 					<FloatingToolbarContext>

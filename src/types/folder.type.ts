@@ -1,3 +1,5 @@
+import { TNote } from "./note.type";
+
 export type TFolder = {
 	id: number;
 	user_id: number;
@@ -10,4 +12,5 @@ export type TFolder = {
 	type: "folder" | "note";
 	count_child?: number;
 	count_child_note?: number;
+	children: (TFolder | TNote)[];
 };

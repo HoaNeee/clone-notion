@@ -7,65 +7,17 @@ import {
 	blockTypeToBlockName,
 	useToolbarState,
 } from "@/contexts/toolbar-context";
-import {
-	Baseline,
-	Check,
-	Code,
-	Heading1,
-	Heading2,
-	Heading3,
-	List,
-	ListOrdered,
-	Quote,
-} from "lucide-react";
-
-export const keyBlocks = [
-	{
-		key: "paragraph",
-		title: "Normal",
-		icon: Baseline,
-	},
-	{
-		key: "h1",
-		title: "Heading 1",
-		icon: Heading1,
-	},
-	{
-		key: "h2",
-		title: "Heading 2",
-		icon: Heading2,
-	},
-	{
-		key: "h3",
-		title: "Heading 3",
-		icon: Heading3,
-	},
-	{
-		key: "ul",
-		title: "Bulleted List",
-		icon: List,
-	},
-	{
-		key: "ol",
-		title: "Numbered List",
-		icon: ListOrdered,
-	},
-	{
-		key: "code",
-		title: "Code Block",
-		icon: Code,
-	},
-	{
-		key: "quote",
-		title: "Quote Block",
-		icon: Quote,
-	},
-];
+import { keyBlocks } from "@/utils/key-blocks";
+import { Check } from "lucide-react";
 
 const DropdownMenuBlock = ({
 	onBlockChange,
+	size = "small",
+	selected = "tick",
 }: {
 	onBlockChange: (blockTypeName: string) => void;
+	size?: "small" | "large" | "medium";
+	selected?: "tick" | "background";
 }) => {
 	const {
 		toolbarState: { blockType },
@@ -82,15 +34,40 @@ const DropdownMenuBlock = ({
 					onClick={() => {
 						onBlockChange(key);
 					}}
-					className="cursor-pointer ml-1"
+					className={`cursor-pointer ml-1 ${
+						size === "small" ? "text-sm" : ""
+					} ${size === "medium" ? "text-base" : ""} ${
+						size === "large" ? "text-lg" : ""
+					} ${
+						selected === "background" && blockType === key
+							? "bg-neutral-100/80"
+							: ""
+					}`}
 				>
 					<div className="flex items-center justify-between gap-1.5 w-full">
-						<div className="flex items-center gap-1 flex-1">
-							{<Icon />}
+						<div
+							className={`flex items-center flex-1 ${
+								size === "small"
+									? "gap-1"
+									: size === "large"
+									? "gap-3"
+									: "gap-2"
+							}`}
+						>
+							<Icon
+								className={`${
+									size === "medium"
+										? "size-5"
+										: size === "large"
+										? "size-6"
+										: ""
+								}`}
+							/>
+
 							{title}
 						</div>
 
-						{blockType === key && <Check />}
+						{selected === "tick" && blockType === key && <Check />}
 					</div>
 				</DropdownMenuItem>
 			))}

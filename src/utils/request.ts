@@ -143,7 +143,11 @@ export const del = async (
 	}
 };
 
-export const postImage = async (key: string, options: any) => {
+export const postImage = async (
+	key: string,
+	options: any,
+	config?: RequestInit
+) => {
 	// myHeaders.append("Content-Type", "multipart/form-data");
 	const formdata = new FormData();
 	formdata.append(key, options);
@@ -152,6 +156,7 @@ export const postImage = async (key: string, options: any) => {
 			credentials: "include",
 			method: "POST",
 			body: formdata,
+			...config,
 		});
 
 		if (!response.ok) {
@@ -164,9 +169,48 @@ export const postImage = async (key: string, options: any) => {
 			throw result.error || result.message || new Error("Request failed");
 		}
 
+		if (result.data) {
+			return result.data;
+		}
+
 		return result;
 	} catch (error: any) {
 		console.log(error);
+		throw Error(error.message || error);
+	}
+};
+
+export const postImageMulti = async (
+	key: string,
+	options: any,
+	config?: RequestInit
+) => {
+	const myHeaders = new Headers();
+
+	const formdata = new FormData();
+	for (const file of options) {
+		formdata.append(`${key}`, file);
+	}
+
+	try {
+		const response = await fetch(`${BASE_URL}/upload/multi`, {
+			credentials: "include",
+			method: "POST",
+			headers: myHeaders,
+			body: formdata,
+			...config,
+		});
+
+		if (!response.ok) {
+			throw new Error(response.statusText || "Internal Server Error");
+		}
+
+		const result = await response.json();
+		if (result.code > 300) {
+			throw Error(result.message);
+		}
+		return result;
+	} catch (error: any) {
 		throw Error(error.message || error);
 	}
 };

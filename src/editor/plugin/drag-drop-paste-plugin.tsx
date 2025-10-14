@@ -42,6 +42,7 @@ export default function DragDropPaste(): null {
 								altText: file.name,
 								src,
 								status: "initial",
+								current_file: file,
 							});
 						}
 					}

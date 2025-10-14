@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
 	$getSelection,
+	$isElementNode,
 	$isRangeSelection,
 	CAN_REDO_COMMAND,
 	CAN_UNDO_COMMAND,
@@ -124,6 +125,11 @@ const useUpdateToolbar = ({
 			const node = selection.anchor.getNode();
 
 			const block = node.getTopLevelElement();
+
+			if ($isElementNode(block)) {
+				const elementFormat = block.getFormatType() || "left";
+				updateToolbarState("elementFormat", elementFormat);
+			}
 
 			if (block) {
 				if ($isHeadingNode(block)) {

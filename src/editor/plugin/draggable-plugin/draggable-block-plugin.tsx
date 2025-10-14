@@ -10,9 +10,9 @@ import {
 	$isRangeSelection,
 	$setSelection,
 } from "lexical";
-import { Dispatch, useCallback, useEffect, useRef, useState } from "react";
+import { Dispatch, useCallback, useRef, useState } from "react";
 import { GripVertical, Plus } from "lucide-react";
-import DropdownMenuAction from "@/editor/plugin/draggable-plugin/dropdown-menu-action";
+import DropdownMenuAction from "./components/dropdown-menu-action";
 import { getBlockFromCursorBlock, getTranslate } from "./utils";
 import MyOverlay from "@/components/overlay";
 import { setFocusCaretSelectionWithNearestNodeFromCursorBlock } from "../../utils/set-selection";
@@ -46,16 +46,6 @@ function DraggableBlock({
 	const [positionMenu, setPositionMenu] = useState({ x: 0, y: 0 });
 	const [cursorBlock, setCursorBlock] = useState<HTMLElement | null>();
 	const lockOpenRef = useRef(false);
-
-	useEffect(() => {
-		const scroll = (e: Event) => {
-			console.log(e);
-		};
-
-		document.addEventListener("", scroll);
-
-		return () => document.removeEventListener("scroll", scroll);
-	}, [editor]);
 
 	const setHideMenu = useCallback(() => {
 		lockOpenRef.current = false;
@@ -205,14 +195,16 @@ function DraggableBlock({
 					<div ref={menuRef} className="draggable-block-menu">
 						<button
 							title="Click to add below"
-							className="icon icon-plus"
+							className="bg-transparent cursor-pointer border-none hover:bg-[#d4d4d45a] text-neutral-400 rounded-xs"
 							onClick={insertBlock}
 							onMouseDown={handleMouseDown}
 						>
 							<Plus size={20} />
 						</button>
 						<button
-							className={`icon ${openMenuDrag ? "bg-[#d4d4d4]" : ""}`}
+							className={`inline-block cursor-grab border-none p-[1px] hover:bg-[#d4d4d45a] text-neutral-400 rounded-xs ${
+								openMenuDrag ? "bg-[#d4d4d45a]" : ""
+							}`}
 							onClick={showMenuAction}
 							onMouseDown={handleMouseDown}
 						>
