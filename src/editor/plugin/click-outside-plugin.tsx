@@ -2,125 +2,135 @@
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useCallback, useEffect } from "react";
-import { $getSelection, $isRangeSelection } from "lexical";
+import { $getSelection, $isRangeSelection, $setSelection } from "lexical";
 import { useFloatingToolbar } from "@/contexts/floating-toolbar-context";
 import { setFocusCaretSelectionWithNearestNodeFromCursorBlock } from "../utils/set-selection";
 
 const ClickOutSidePlugin = ({ anchorElem }: { anchorElem?: HTMLElement }) => {
-	const [editor] = useLexicalComposerContext();
-	const {
-		floatingToolbarState: { openningFloatingToolbar },
-	} = useFloatingToolbar();
+  const [editor] = useLexicalComposerContext();
+  const {
+    floatingToolbarState: { openningFloatingToolbar },
+  } = useFloatingToolbar();
 
-	const blur = useCallback(
-		(e: MouseEvent) => {
-			if (typeof document === "undefined" || !anchorElem) {
-				return;
-			}
+  const blur = useCallback(
+    (e: MouseEvent) => {
+      if (typeof document === "undefined" || !anchorElem) {
+        return;
+      }
 
-			const toolbarElement = document.querySelector(".toolbar");
-			const editLinkElement = document.querySelector(".floating-edit-link");
-			const notOutSideElems = document.querySelectorAll(".not-outside");
+      const toolbarElement = document.querySelector(".toolbar");
+      const editLinkElement = document.querySelector(".floating-edit-link");
+      const notOutSideElems = document.querySelectorAll(".not-outside");
+      const editorContainer = document.querySelector(".editor-container");
 
-			const body = document.body;
+      const body = document.body;
+      const style = window.getComputedStyle(body);
 
-			if (body.style.pointerEvents === "none") {
-				return;
-			}
+      if (style.pointerEvents === "none") {
+        return;
+      }
 
-			editor.update(() => {
-				const selection = $getSelection();
-				if ($isRangeSelection(selection)) {
-					const content = selection.getTextContent();
-					if (content && !openningFloatingToolbar) {
-						return;
-					}
-				}
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const content = selection.getTextContent();
+          if (content && !openningFloatingToolbar) {
+            return;
+          }
+        }
 
-				if (e.target instanceof Node) {
-					if (toolbarElement && toolbarElement.contains(e.target)) {
-						return;
-					}
+        if (e.target instanceof Node) {
+          if (toolbarElement && toolbarElement.contains(e.target)) {
+            return;
+          }
 
-					if (editLinkElement && editLinkElement.contains(e.target)) {
-						return;
-					}
+          if (editLinkElement && editLinkElement.contains(e.target)) {
+            return;
+          }
 
-					let isOutSide = true;
+          let isOutSide = true;
 
-					if (notOutSideElems.length > 0) {
-						for (const node of notOutSideElems) {
-							if (node.contains(e.target)) {
-								isOutSide = false;
-							}
-						}
-					}
+          if (notOutSideElems.length > 0) {
+            for (const node of notOutSideElems) {
+              if (node.contains(e.target)) {
+                isOutSide = false;
+              }
+            }
+          }
 
-					if (!isOutSide) {
-						return;
-					}
+          if (!isOutSide || !anchorElem || !editorContainer) {
+            return;
+          }
 
-					if (!anchorElem.contains(e.target)) {
-						const X = e.clientX;
-						const Y = e.clientY;
+          if (!editorContainer.contains(e.target)) {
+            $setSelection(null);
+          }
 
-						const root = editor.getRootElement();
+          if (
+            !anchorElem.contains(e.target) &&
+            editorContainer.contains(e.target)
+          ) {
+            const X = e.clientX;
+            const Y = e.clientY;
 
-						if (!root) {
-							return;
-						}
-						console.log("mouse up outside plugin");
-						const nodes = root.childNodes;
-						let isRight = false;
-						const nodeMaps = new Map<number, HTMLElement>();
+            const root = editor.getRootElement();
 
-						for (const node of nodes) {
-							if (node instanceof HTMLElement) {
-								const rect = node.getBoundingClientRect();
-								let top = rect.top;
-								nodeMaps.set(top, node);
+            if (!root) {
+              return;
+            }
 
-								top += rect.height;
-								nodeMaps.set(top, node);
-								if (X > rect.left) {
-									isRight = true;
-								}
-							}
-						}
+            console.log("mouse up outside plugin");
+            const nodes = root.childNodes;
+            let isRight = false;
+            const nodeMaps = new Map<number, HTMLElement>();
 
-						let cursorBlock = nodes[0] as HTMLElement;
-						let minTop = Infinity;
-						nodeMaps.forEach((value, key) => {
-							const abs = Math.abs(key - Y);
-							if (minTop > abs) {
-								cursorBlock = value;
-								minTop = abs;
-							}
-						});
+            for (const node of nodes) {
+              if (node instanceof HTMLElement) {
+                const rect = node.getBoundingClientRect();
+                let top = rect.top;
+                nodeMaps.set(top, node);
 
-						setFocusCaretSelectionWithNearestNodeFromCursorBlock(
-							editor,
-							cursorBlock,
-							isRight ? "end" : "start"
-						);
-					}
-				}
-			});
-		},
-		[editor, anchorElem, openningFloatingToolbar]
-	);
+                top += rect.height;
+                nodeMaps.set(top, node);
+                if (X > rect.left) {
+                  isRight = true;
+                }
+              }
+            }
 
-	//event blur while toolbar is openning -> hide, or set pointer
-	useEffect(() => {
-		const element = document.body;
+            let cursorBlock = nodes[0] as HTMLElement;
+            let minTop = Infinity;
+            nodeMaps.forEach((value, key) => {
+              const abs = Math.abs(key - Y);
+              if (minTop > abs) {
+                cursorBlock = value;
+                minTop = abs;
+              }
+            });
 
-		element.addEventListener("mouseup", blur);
+            setFocusCaretSelectionWithNearestNodeFromCursorBlock(
+              editor,
+              cursorBlock,
+              isRight ? "end" : "start"
+            );
+          }
+        }
+      });
+    },
+    [editor, anchorElem, openningFloatingToolbar]
+  );
 
-		return () => {
-			element.removeEventListener("mouseup", blur);
-		};
-	}, [blur]);
-	return null;
+  //event blur while toolbar is openning -> hide, or set pointer
+  useEffect(() => {
+    const element = document.body;
+
+    element.addEventListener("mouseup", blur);
+
+    return () => {
+      element.removeEventListener("mouseup", blur);
+    };
+  }, [blur]);
+  return null;
 };
 
 export default ClickOutSidePlugin;

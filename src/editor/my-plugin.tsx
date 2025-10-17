@@ -20,104 +20,110 @@ import ImagePlugin from "./plugin/image-plugin";
 import DragDropPaste from "./plugin/drag-drop-paste-plugin";
 import { useToolbarState } from "@/contexts/toolbar-context";
 import ComponentPickerPlugin from "./plugin/component-picker-plugin";
-import { Button } from "@/components/ui/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { SquareMenu } from "lucide-react";
 import CodeActionMenuPlugin from "./plugin/code-action-plugin/code-action-pluin";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
+import TableCellResizerPlugin from "./plugin/table-resizer-plugin";
+import TableHoverActionsPlugin from "./plugin/table-hover-action-plugin";
+import TableActionMenuPlugin from "./plugin/table-action-plugin";
 
 const DraggableBlockPlugin = dynamic(
-	() => import("./plugin/draggable-plugin/draggable-block-plugin"),
-	{ ssr: false }
+  () => import("./plugin/draggable-plugin/draggable-block-plugin"),
+  { ssr: false }
 );
 
 const MyPlugin = () => {
-	const { activeEditor } = useToolbarState();
+  const {
+    activeEditor,
+    toolbarState: { blockType },
+  } = useToolbarState();
 
-	const [floatingAnchorElement, setFloatingAnchorElement] =
-		useState<HTMLDivElement>();
-	const [isEditLink, setIsEditLink] = useState(false);
-	const [openMenuDrag, setOpenMenuDrag] = useState(false);
-	const [openToolbar, setOpenToolbar] = useState(false);
+  const [floatingAnchorElement, setFloatingAnchorElement] =
+    useState<HTMLDivElement>();
+  const [isEditLink, setIsEditLink] = useState(false);
+  const [openMenuDrag, setOpenMenuDrag] = useState(false);
 
-	const onRef = (_element: HTMLDivElement | null) => {
-		if (_element) {
-			setFloatingAnchorElement(_element);
-		}
-	};
+  const onRef = (_element: HTMLDivElement | null) => {
+    if (_element) {
+      setFloatingAnchorElement(_element);
+    }
+  };
 
-	return (
-		<div className="editor-container">
-			<ToolbarPlugin editor={activeEditor} />
+  return (
+    <div className="editor-container">
+      <ToolbarPlugin editor={activeEditor} setIsEditLink={setIsEditLink} />
+      <div className="max-w-4xl mx-auto w-full h-full relative bg-white">
+        <RichTextPlugin
+          contentEditable={
+            <div
+              ref={(e) => {
+                onRef(e);
+              }}
+            >
+              <ContentEditable
+                className={"editor-input"}
+                aria-placeholder={""}
+                placeholder={
+                  <div className="editor-placeholder">
+                    {<div>Write somthing</div>}
+                  </div>
+                }
+              />
+            </div>
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <HistoryPlugin />
+        <AutoFocusPlugin defaultSelection={"rootStart"} />
 
-			<div className="editor-inner max-w-4xl mx-auto">
-				<RichTextPlugin
-					contentEditable={
-						<div
-							ref={(e) => {
-								onRef(e);
-							}}
-						>
-							<ContentEditable
-								className={"editor-input"}
-								aria-placeholder={""}
-								placeholder={
-									<div className="editor-placeholder">
-										{<div>Write somthing</div>}
-									</div>
-								}
-							/>
-						</div>
-					}
-					ErrorBoundary={LexicalErrorBoundary}
-				/>
-				<HistoryPlugin />
-				<AutoFocusPlugin defaultSelection={"rootStart"} />
+        <ListPlugin />
+        <CodeHighlightShikiPlugin />
+        {/* <LexicalAutoLinkPlugin /> */}
+        {/* <SelectionAlwaysOnDisplay /> */}
+        <LinkPlugin />
+        <MarkDownShortcutPlugin />
+        <TabIndentationPlugin />
+        <ImagePlugin />
+        <DragDropPaste />
+        <TablePlugin hasHorizontalScroll hasCellMerge />
+        <TableCellResizerPlugin />
 
-				<ListPlugin />
-				<CodeHighlightShikiPlugin />
-				{/* <LexicalAutoLinkPlugin /> */}
-				{/* <SelectionAlwaysOnDisplay /> */}
-				<LinkPlugin />
-				<MarkDownShortcutPlugin />
-				<TabIndentationPlugin />
-				<ImagePlugin />
-				<DragDropPaste />
-				<ComponentPickerPlugin />
+        {blockType !== "code" && <ComponentPickerPlugin />}
 
-				{floatingAnchorElement && (
-					<>
-						{!isEditLink && (
-							<DraggableBlockPlugin
-								anchorElem={floatingAnchorElement}
-								openMenuDrag={openMenuDrag}
-								setOpenMenuDrag={setOpenMenuDrag}
-							/>
-						)}
-						<FloatingToolbarPlugin
-							anchorElem={floatingAnchorElement}
-							isEditLink={isEditLink}
-							setIsEditLink={setIsEditLink}
-							editor={activeEditor}
-						/>
-						<FloatingEditLinkPlugin
-							anchorElem={floatingAnchorElement}
-							isEditLink={isEditLink}
-							setIsEditLink={setIsEditLink}
-						/>
-						{!openMenuDrag && (
-							<ClickOutSidePlugin anchorElem={floatingAnchorElement} />
-						)}
-						<CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
-					</>
-				)}
-				<SelectionCustomPlugin />
-			</div>
-		</div>
-	);
+        {floatingAnchorElement && (
+          <>
+            {!isEditLink && (
+              <DraggableBlockPlugin
+                anchorElem={floatingAnchorElement}
+                openMenuDrag={openMenuDrag}
+                setOpenMenuDrag={setOpenMenuDrag}
+              />
+            )}
+            <FloatingToolbarPlugin
+              anchorElem={floatingAnchorElement}
+              isEditLink={isEditLink}
+              setIsEditLink={setIsEditLink}
+              editor={activeEditor}
+            />
+            <FloatingEditLinkPlugin
+              anchorElem={floatingAnchorElement}
+              isEditLink={isEditLink}
+              setIsEditLink={setIsEditLink}
+            />
+            {!openMenuDrag && (
+              <ClickOutSidePlugin anchorElem={floatingAnchorElement} />
+            )}
+            <CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
+            <TableHoverActionsPlugin anchorElem={floatingAnchorElement} />
+            <TableActionMenuPlugin
+              anchorElem={floatingAnchorElement}
+              cellMerge
+            />
+          </>
+        )}
+        <SelectionCustomPlugin />
+      </div>
+    </div>
+  );
 };
 
 export default MyPlugin;

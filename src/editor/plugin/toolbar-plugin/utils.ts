@@ -1,193 +1,210 @@
 import { $createCodeNode } from "@lexical/code";
 import {
-	$createListItemNode,
-	$createListNode,
-	$isListItemNode,
-	INSERT_CHECK_LIST_COMMAND,
-	INSERT_ORDERED_LIST_COMMAND,
-	INSERT_UNORDERED_LIST_COMMAND,
+  $createListItemNode,
+  $createListNode,
+  $isListItemNode,
+  INSERT_CHECK_LIST_COMMAND,
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
 } from "@lexical/list";
 import {
-	$createHeadingNode,
-	$createQuoteNode,
-	HeadingTagType,
+  $createHeadingNode,
+  $createQuoteNode,
+  HeadingTagType,
 } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import {
-	$createParagraphNode,
-	$createRangeSelection,
-	$getNodeByKey,
-	$getSelection,
-	$isRangeSelection,
-	$setSelection,
-	LexicalEditor,
+  $createParagraphNode,
+  $getSelection,
+  $isRangeSelection,
+  LexicalEditor,
 } from "lexical";
 import {
-	setFocusCaretSelectionWithBlock,
-	setFocusCaretSelectionWithParent,
+  setFocusCaretSelectionWithBlock,
+  setFocusCaretSelectionWithParent,
 } from "../../utils/set-selection";
+import { $getTableNodeFromLexicalNodeOrThrow } from "@lexical/table";
 
 export const formatParagraph = (editor: LexicalEditor) => {
-	editor.update(() => {
-		const selection = $getSelection();
-		$setBlocksType(selection, () => $createParagraphNode());
-	});
+  editor.update(() => {
+    const selection = $getSelection();
+    $setBlocksType(selection, () => $createParagraphNode());
+  });
 };
 
 export const formatHeading = (
-	editor: LexicalEditor,
-	blockType: string,
-	headingSize: HeadingTagType
+  editor: LexicalEditor,
+  blockType: string,
+  headingSize: HeadingTagType
 ) => {
-	if (blockType !== headingSize) {
-		editor.update(() => {
-			const selection = $getSelection();
-			if ($isRangeSelection(selection)) {
-				$setBlocksType(selection, () => $createHeadingNode(headingSize));
-			}
-		});
-	}
+  if (blockType !== headingSize) {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        $setBlocksType(selection, () => $createHeadingNode(headingSize));
+      }
+    });
+  }
 };
 
 export const formatBulletList = (
-	editor: LexicalEditor,
-	blockType: string,
-	isSelectionManyBlock?: boolean,
-	isManyLine?: boolean
+  editor: LexicalEditor,
+  blockType: string,
+  isSelectionManyBlock?: boolean,
+  isManyLine?: boolean
 ) => {
-	editor.update(() => {
-		const selection = $getSelection();
-		if ($isRangeSelection(selection)) {
-			const node = selection.anchor.getNode();
-			const parent = node.getParent();
-			const listNode = $createListNode("bullet");
-			if (!isSelectionManyBlock) {
-				if (isManyLine) {
-					const nodes = selection.getNodes();
-					const listItemNode = nodes.filter((node) => $isListItemNode(node));
+  editor.update(() => {
+    const selection = $getSelection();
+    if ($isRangeSelection(selection)) {
+      const node = selection.anchor.getNode();
+      const parent = node.getParent();
+      const listNode = $createListNode("bullet");
+      if (!isSelectionManyBlock) {
+        if (isManyLine) {
+          const nodes = selection.getNodes();
+          const listItemNode = nodes.filter((node) => $isListItemNode(node));
 
-					for (const node of listItemNode) {
-						const newNode = $createListItemNode();
-						newNode.append(...node.getChildren());
-						listNode.append(newNode);
-						node.replace(listNode);
-					}
+          for (const node of listItemNode) {
+            const newNode = $createListItemNode();
+            newNode.append(...node.getChildren());
+            listNode.append(newNode);
+            node.replace(listNode);
+          }
 
-					setFocusCaretSelectionWithBlock(editor, "end");
-					return;
-				}
+          setFocusCaretSelectionWithBlock(editor, "end");
+          return;
+        }
 
-				if (parent) {
-					const listItemNode = $createListItemNode();
-					listItemNode.append(...parent.getChildren());
-					listNode.append(listItemNode);
-					parent.replace(listNode);
-				}
-				setFocusCaretSelectionWithParent(editor, "end");
-			} else {
-				editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-				setFocusCaretSelectionWithBlock(editor, "end");
-			}
-		}
-	});
+        if (parent) {
+          const listItemNode = $createListItemNode();
+          listItemNode.append(...parent.getChildren());
+          listNode.append(listItemNode);
+          parent.replace(listNode);
+        }
+        setFocusCaretSelectionWithParent(editor, "end");
+      } else {
+        editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+        setFocusCaretSelectionWithBlock(editor, "end");
+      }
+    }
+  });
 };
 
 export const formatCheckList = (editor: LexicalEditor, blockType: string) => {
-	if (blockType !== "check") {
-		editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
-	} else {
-		formatParagraph(editor);
-	}
+  if (blockType !== "check") {
+    editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+  } else {
+    formatParagraph(editor);
+  }
 };
 
 export const formatNumberedList = (
-	editor: LexicalEditor,
-	blockType: string,
-	isSelectionManyBlock?: boolean,
-	isManyLine?: boolean
+  editor: LexicalEditor,
+  blockType: string,
+  isSelectionManyBlock?: boolean,
+  isManyLine?: boolean
 ) => {
-	editor.update(() => {
-		const selection = $getSelection();
-		if ($isRangeSelection(selection)) {
-			const node = selection.anchor.getNode();
-			const parent = node.getParent();
-			const listNode = $createListNode("number");
-			if (!isSelectionManyBlock) {
-				if (isManyLine) {
-					const nodes = selection.getNodes();
-					const listItemNode = nodes.filter((node) => $isListItemNode(node));
+  editor.update(() => {
+    const selection = $getSelection();
+    if ($isRangeSelection(selection)) {
+      const node = selection.anchor.getNode();
+      const parent = node.getParent();
+      const listNode = $createListNode("number");
+      if (!isSelectionManyBlock) {
+        if (isManyLine) {
+          const nodes = selection.getNodes();
+          const listItemNode = nodes.filter((node) => $isListItemNode(node));
 
-					for (const node of listItemNode) {
-						const newNode = $createListItemNode();
-						newNode.append(...node.getChildren());
-						listNode.append(newNode);
-						node.replace(listNode);
-					}
-					setFocusCaretSelectionWithBlock(editor, "end");
-					return;
-				}
+          for (const node of listItemNode) {
+            const newNode = $createListItemNode();
+            newNode.append(...node.getChildren());
+            listNode.append(newNode);
+            node.replace(listNode);
+          }
+          setFocusCaretSelectionWithBlock(editor, "end");
+          return;
+        }
 
-				if (parent) {
-					const listItemNode = $createListItemNode();
-					listItemNode.append(...parent.getChildren());
-					listNode.append(listItemNode);
-					parent.replace(listNode);
-				}
+        if (parent) {
+          const listItemNode = $createListItemNode();
+          listItemNode.append(...parent.getChildren());
+          listNode.append(listItemNode);
+          parent.replace(listNode);
+        }
 
-				setFocusCaretSelectionWithParent(editor, "end");
-			} else {
-				editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-				setFocusCaretSelectionWithBlock(editor, "end");
-			}
-		}
-	});
+        setFocusCaretSelectionWithParent(editor, "end");
+      } else {
+        editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+        setFocusCaretSelectionWithBlock(editor, "end");
+      }
+    }
+  });
 };
 
 export const formatQuote = (editor: LexicalEditor, blockType: string) => {
-	if (blockType !== "quote") {
-		editor.update(() => {
-			const selection = $getSelection();
-			$setBlocksType(selection, () => $createQuoteNode());
-		});
-	}
+  if (blockType !== "quote") {
+    editor.update(() => {
+      const selection = $getSelection();
+      $setBlocksType(selection, () => $createQuoteNode());
+    });
+  }
 };
 
 export const formatCode = (
-	editor: LexicalEditor,
-	blockType: string,
-	currentLang = "javascript",
-	lang = "javascript"
+  editor: LexicalEditor,
+  blockType: string,
+  currentLang = "javascript",
+  lang = "javascript"
 ) => {
-	if (blockType !== "code" || currentLang !== lang) {
-		editor.update(() => {
-			let selection = $getSelection();
-			if (!selection) {
-				return;
-			}
-			if (!$isRangeSelection(selection) || selection.isCollapsed()) {
-				$setBlocksType(selection, () => $createCodeNode(lang));
-			} else {
-				const textContent = selection.getTextContent();
-				const codeNode = $createCodeNode(lang);
-				selection.insertNodes([codeNode]);
-				selection = $getSelection();
-				if ($isRangeSelection(selection)) {
-					selection.insertRawText(textContent);
-				}
-			}
-		});
-	}
+  if (blockType !== "code" || currentLang !== lang) {
+    editor.update(() => {
+      let selection = $getSelection();
+      if (!selection) {
+        return;
+      }
+      if (!$isRangeSelection(selection) || selection.isCollapsed()) {
+        $setBlocksType(selection, () => $createCodeNode(lang));
+      } else {
+        const textContent = selection.getTextContent();
+        const codeNode = $createCodeNode(lang);
+        selection.insertNodes([codeNode]);
+        selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertRawText(textContent);
+        }
+      }
+    });
+  }
 };
 export const deleteBlock = (editor: LexicalEditor) => {
-	editor.update(() => {
-		const selection = $getSelection();
-		if (!selection) {
-			return;
-		}
-		if ($isRangeSelection(selection)) {
-			const node = selection.anchor.getNode();
-			const block = node.getTopLevelElementOrThrow();
-			block.remove();
-		}
-	});
+  editor.update(() => {
+    try {
+      const selection = $getSelection();
+      if (!selection) {
+        return;
+      }
+      if ($isRangeSelection(selection)) {
+        const node = selection.anchor.getNode();
+        const block = node.getTopLevelElement();
+        if (block) {
+          const parent = block.getParent();
+          const rootEditor = editor.getRootElement();
+          if (parent) {
+            const element = editor.getElementByKey(parent.getKey());
+            if (element && element === rootEditor) {
+              block.remove();
+            } else {
+              //maybe table cell
+              const tableNode = $getTableNodeFromLexicalNodeOrThrow(block);
+              if (tableNode) {
+                tableNode.remove();
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  });
 };
