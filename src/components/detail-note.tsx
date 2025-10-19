@@ -8,53 +8,69 @@ import { get } from "@/utils/request";
 import React, { useCallback, useEffect, useState } from "react";
 
 const DetailNote = ({ slug }: { slug: string }) => {
-  const [folderExists, setFolderExists] = useState<TFolder[]>([]);
-  const [note, setNote] = useState<TNote | null>(null);
+	const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
+	const [note, setNote] = useState<TNote | null>(null);
 
-  const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
+	//FIX THEN LATER: handle forbidden access note
+	const [isForbidden, setIsForbidden] = useState(false);
 
-  const getNoteDetail = useCallback(async () => {
-    try {
-      const res = await get(`/notes/detail/${slug}`);
-      setNote(res.note);
-      setFolderExists(res.folders);
-    } catch (error) {
-      console.log(error);
-    }
-  }, [slug]);
+	const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
 
-  useEffect(() => {
-    getNoteDetail();
-  }, [getNoteDetail]);
+	const getNoteDetail = useCallback(async () => {
+		try {
+			const res = await get(`/notes/detail/${slug}`);
+			setNote(res.note);
+			setFolderExistsToOpen(res.folders);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				error.message.toLowerCase().includes("forbidden")
+			) {
+				setIsForbidden(true);
+			}
+		}
+	}, [slug]);
 
-  useEffect(() => {
-    if (folderExists.length === 0) {
-      return;
-    }
+	useEffect(() => {
+		getNoteDetail();
+	}, [getNoteDetail]);
 
-    const fetchFolders = async () => {
-      if (folderExists.length > 0) {
-        for (const folder of folderExists) {
-          await fetchDataTree(folder.id);
-        }
-        setFoldersDefaultOpen(folderExists.reverse());
-      }
-    };
-    fetchFolders();
-  }, [folderExists, fetchDataTree, setFoldersDefaultOpen]);
+	useEffect(() => {
+		if (folderExistsToOpen.length === 0) {
+			return;
+		}
 
-  if (!note) {
-    return <></>;
-  }
+		const fetchFolders = async () => {
+			if (folderExistsToOpen.length > 0) {
+				for (const folder of folderExistsToOpen) {
+					await fetchDataTree(folder.id);
+				}
+				setFoldersDefaultOpen(folderExistsToOpen.reverse());
+			}
+		};
+		fetchFolders();
+	}, [folderExistsToOpen, fetchDataTree, setFoldersDefaultOpen]);
 
-  return (
-    <div className="w-full h-full">
-      <div className="max-w-4xl mx-auto pl-15  mt-16 mb-6">
-        <h1 className="font-bold text-4xl">{note.title}</h1>
-      </div>
-      <MyEditor editorStateInitial={note.content} note={note} />
-    </div>
-  );
+	if (isForbidden) {
+		return (
+			<div className="text-center text-red-500 mt-10">
+				You do not have permission to access this note.
+			</div>
+		);
+	}
+
+	if (!note) {
+		return <></>;
+	}
+
+	return (
+		<div className="w-full h-full">
+			<div className="max-w-4xl mx-auto pl-15  mt-16 mb-6">
+				<h1 className="font-bold text-4xl">{note.title}</h1>
+			</div>
+			<MyEditor editorStateInitial={note.content} note={note} />
+		</div>
+	);
 };
 
 export default DetailNote;

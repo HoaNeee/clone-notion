@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { isProduction } from "@/lib/utils";
+
 export const DOMAIN =
 	process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -21,9 +23,14 @@ export const get = async (url: string, config?: RequestInit) => {
 		if (!result.success) {
 			throw result.error || result.message || new Error("Request failed");
 		}
-		return result.data;
+		if (result.data) {
+			return result.data;
+		}
+		return result;
 	} catch (error) {
-		console.log(error);
+		if (!isProduction) {
+			console.log(error);
+		}
 		throw error;
 	}
 };
@@ -66,7 +73,9 @@ export const post = async (
 		}
 		return result;
 	} catch (error: any) {
-		console.log(error);
+		if (!isProduction) {
+			console.log(error);
+		}
 		throw error.message || error;
 	}
 };
@@ -102,7 +111,9 @@ export const patch = async (
 		}
 		return result;
 	} catch (error: any) {
-		console.log(error);
+		if (!isProduction) {
+			console.log(error);
+		}
 		throw error.message || error;
 	}
 };
@@ -138,7 +149,9 @@ export const del = async (
 		}
 		return result;
 	} catch (error: any) {
-		console.log(error);
+		if (!isProduction) {
+			console.log(error);
+		}
 		throw error.message || error;
 	}
 };
@@ -175,7 +188,9 @@ export const postImage = async (
 
 		return result;
 	} catch (error: any) {
-		console.log(error);
+		if (!isProduction) {
+			console.log(error);
+		}
 		throw Error(error.message || error);
 	}
 };

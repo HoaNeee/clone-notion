@@ -6,7 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export async function sleep(duration: number = 100) {
-	return new Promise((resolve) => {
-		setTimeout(() => resolve, duration);
+	return await new Promise((resolve) => {
+		setTimeout(resolve, duration);
 	});
 }
+
+export const isProduction = process.env.NODE_ENV === "production";

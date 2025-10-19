@@ -3,6 +3,8 @@ import DetailNote from "@/components/detail-note";
 import { notFound } from "next/navigation";
 import { get } from "@/utils/request";
 import NoteHeader from "@/components/note-header";
+import { cookies } from "next/headers";
+import AuthDialog from "@/components/auth-dialog";
 
 const getNoteDetail = async (slug: string) => {
 	try {
@@ -20,6 +22,11 @@ const NoteDetail = async ({
 	params: Promise<{ slug: string }>;
 }) => {
 	const slug = (await params).slug;
+	const token = (await cookies()).get("note_jwt_token")?.value;
+
+	if (!token) {
+		return <AuthDialog />;
+	}
 
 	return (
 		<div className="w-full h-full">
