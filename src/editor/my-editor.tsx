@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { EditorState } from "lexical";
 import { useState } from "react";
 import {
-	InitialEditorStateType,
-	LexicalComposer,
+  InitialEditorStateType,
+  LexicalComposer,
 } from "@lexical/react/LexicalComposer";
 import { ToolbarContext } from "@/contexts/toolbar-context";
 import { SelectionCustomContext } from "@/contexts/selection-custom-context";
@@ -14,95 +14,110 @@ import MyPlugin from "./my-plugin";
 import MyOnChangePlugin from "./plugin/my-on-change-plugin";
 import { initialConfig } from "./configs/initial-config";
 import lodash from "lodash";
-import { useFolderState } from "@/contexts/folder-context";
 import { TNote } from "@/types/note.type";
 import { defaultEditorState } from "@/lib/contants";
 import { sampleData } from "../data/sampleStateData";
+import { patch } from "@/utils/request";
 
 const MyEditor = ({
-	editorStateInitial,
-	note,
+  editorStateInitial,
+  note,
+  editable = true,
 }: {
-	editorStateInitial: string;
-	note: TNote;
+  editorStateInitial: string;
+  note: TNote;
+  editable?: boolean;
 }) => {
-	const [editorState, setEditorState] = useState<string>(
-		editorStateInitial || defaultEditorState
-	);
+  const [editorState, setEditorState] = useState<string>(
+    editorStateInitial || defaultEditorState
+  );
 
-	const { onUpdate } = useFolderState();
+  const onUpdate = useCallback(async (id: number, payload: Partial<TNote>) => {
+    try {
+      const newPayload = { ...payload } as Partial<TNote>;
+      delete newPayload.createdAt;
+      delete newPayload.updatedAt;
+      delete newPayload.id;
 
-	const handleSave = async (state: string) => {
-		//save data here
-		const payload = {
-			content: state,
-		};
+      const res = await patch(`/notes/update/${id}`, newPayload);
 
-		try {
-			// await onUpdate(note.id, payload, "note");
-		} catch (error) {
-			console.error("Error saving note:", error);
-		}
-	};
+      console.log(res);
+    } catch (error) {
+      throw error;
+    }
+  }, []);
 
-	const debounceSave = useRef(
-		lodash.debounce((state) => {
-			console.log("Auto saving...");
-			handleSave(state);
-		}, 1000)
-	).current;
+  const handleSave = async (state: string) => {
+    //save data here
+    const payload = {
+      content: state,
+    };
 
-	const onChange = useCallback(
-		async (editorStateParam: EditorState) => {
-			const editorStateJSON = editorStateParam.toJSON();
+    try {
+      // await onUpdate(note.id, payload);
+    } catch (error) {
+      console.error("Error saving note:", error);
+    }
+  };
 
-			// However, we still have a JavaScript object, so we need to convert it to an actual string with JSON.stringify
-			const json = JSON.stringify(editorStateJSON);
+  const debounceSave = useRef(
+    lodash.debounce((state) => {
+      console.log("Auto saving...");
+      handleSave(state);
+    }, 1000)
+  ).current;
 
-			if (json !== editorState) {
-				setEditorState(json);
-				debounceSave(json);
-			}
-		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[editorState]
-	);
+  const onChange = useCallback(
+    async (editorStateParam: EditorState) => {
+      const editorStateJSON = editorStateParam.toJSON();
 
-	useEffect(() => {
-		if (typeof window === "undefined") return;
+      // However, we still have a JavaScript object, so we need to convert it to an actual string with JSON.stringify
+      const json = JSON.stringify(editorStateJSON);
 
-		const keyboardSave = (e: KeyboardEvent) => {
-			if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-				e.preventDefault();
+      if (json !== editorState) {
+        setEditorState(json);
+        debounceSave(json);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editorState]
+  );
 
-				console.log("Manually saving...");
-				debounceSave.flush();
-			}
-		};
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-		window.addEventListener("keydown", keyboardSave);
-		return () => {
-			window.removeEventListener("keydown", keyboardSave);
-		};
-	}, [debounceSave]);
+    const keyboardSave = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
 
-	return (
-		<LexicalComposer
-			initialConfig={{
-				...initialConfig,
-				editorState: editorState as InitialEditorStateType,
-			}}
-		>
-			<ToolbarContext>
-				<SelectionCustomContext>
-					<FloatingToolbarContext>
-						<MyPlugin />
-						<MyOnChangePlugin onChange={onChange} />
-					</FloatingToolbarContext>
-				</SelectionCustomContext>
-			</ToolbarContext>
-		</LexicalComposer>
-	);
+        console.log("Manually saving...");
+        debounceSave.flush();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardSave);
+    return () => {
+      window.removeEventListener("keydown", keyboardSave);
+    };
+  }, [debounceSave]);
+
+  return (
+    <LexicalComposer
+      initialConfig={{
+        ...initialConfig,
+        editorState: editorState as InitialEditorStateType,
+      }}
+    >
+      <ToolbarContext>
+        <SelectionCustomContext>
+          <FloatingToolbarContext>
+            <MyPlugin editable={editable} />
+            <MyOnChangePlugin onChange={onChange} />
+          </FloatingToolbarContext>
+        </SelectionCustomContext>
+      </ToolbarContext>
+    </LexicalComposer>
+  );
 };
 
 export default MyEditor;

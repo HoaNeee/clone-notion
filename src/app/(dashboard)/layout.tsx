@@ -1,27 +1,36 @@
 import AppSidebar from "@/components/app-sidebar";
+import ReactDragAndDropProvider from "@/contexts/react-dnd-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import SidebarLayoutContainer from "@/layouts/sidebar-layout-container";
+import { FolderContextProvider } from "@/contexts/folder-context";
 import { cookies } from "next/dist/server/request/cookies";
 
 export default async function DashboardLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	const token = (await cookies()).get("note_jwt_token")?.value;
+  const token = (await cookies()).get("note_jwt_token")?.value;
 
-	if (!token) {
-		return <main className="w-full h-full">{children}</main>;
-	}
+  if (!token) {
+    return (
+      <SidebarProvider>
+        <SidebarInset>
+          <main className="w-full h-full">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
-	return (
-		<SidebarProvider>
-			<SidebarLayoutContainer>
-				<AppSidebar />
-				<SidebarInset>
-					<main className="w-full h-full">{children}</main>
-				</SidebarInset>
-			</SidebarLayoutContainer>
-		</SidebarProvider>
-	);
+  return (
+    <SidebarProvider>
+      <FolderContextProvider>
+        <ReactDragAndDropProvider>
+          <AppSidebar />
+        </ReactDragAndDropProvider>
+        <SidebarInset>
+          <main className="w-full h-full">{children}</main>
+        </SidebarInset>
+      </FolderContextProvider>
+    </SidebarProvider>
+  );
 }

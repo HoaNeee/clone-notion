@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
@@ -22,7 +22,6 @@ import { useToolbarState } from "@/contexts/toolbar-context";
 import ComponentPickerPlugin from "./plugin/component-picker-plugin";
 import CodeActionMenuPlugin from "./plugin/code-action-plugin/code-action-pluin";
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
-import TableCellResizerPlugin from "./plugin/table-resizer-plugin";
 import TableHoverActionsPlugin from "./plugin/table-hover-action-plugin";
 import TableActionMenuPlugin from "./plugin/table-action-plugin";
 
@@ -31,7 +30,12 @@ const DraggableBlockPlugin = dynamic(
   { ssr: false }
 );
 
-const MyPlugin = () => {
+const TableCellResizerPlugin = dynamic(
+  () => import("./plugin/table-resizer-plugin"),
+  { ssr: false }
+);
+
+const MyPlugin = ({ editable = true }: { editable?: boolean }) => {
   const {
     activeEditor,
     toolbarState: { blockType },
@@ -48,9 +52,17 @@ const MyPlugin = () => {
     }
   };
 
+  useEffect(() => {
+    if (activeEditor) {
+      activeEditor.setEditable(editable);
+    }
+  }, [editable, activeEditor]);
+
   return (
     <div className="editor-container">
-      <ToolbarPlugin editor={activeEditor} setIsEditLink={setIsEditLink} />
+      {editable && (
+        <ToolbarPlugin editor={activeEditor} setIsEditLink={setIsEditLink} />
+      )}
       <div className="max-w-4xl mx-auto w-full h-full relative bg-white">
         <RichTextPlugin
           contentEditable={
@@ -64,7 +76,7 @@ const MyPlugin = () => {
                 aria-placeholder={""}
                 placeholder={
                   <div className="editor-placeholder">
-                    {<div>Write somthing</div>}
+                    {<div>Write somthing here..., press {"/"} for command</div>}
                   </div>
                 }
               />
@@ -89,7 +101,7 @@ const MyPlugin = () => {
 
         {blockType !== "code" && <ComponentPickerPlugin />}
 
-        {floatingAnchorElement && (
+        {floatingAnchorElement && editable && (
           <>
             {!isEditLink && (
               <DraggableBlockPlugin
@@ -112,13 +124,15 @@ const MyPlugin = () => {
             {!openMenuDrag && (
               <ClickOutSidePlugin anchorElem={floatingAnchorElement} />
             )}
-            <CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
             <TableHoverActionsPlugin anchorElem={floatingAnchorElement} />
             <TableActionMenuPlugin
               anchorElem={floatingAnchorElement}
               cellMerge
             />
           </>
+        )}
+        {floatingAnchorElement && (
+          <CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
         )}
         <SelectionCustomPlugin />
       </div>

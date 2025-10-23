@@ -285,6 +285,7 @@ function CodeActionMenuContainer({
     right: "0",
     top: "0",
   });
+  const editable = React.useMemo(() => editor && editor.isEditable(), [editor]);
 
   const [openDropdownLanguage, setOpenDropdownLanguage] = useState(false);
 
@@ -386,13 +387,17 @@ function CodeActionMenuContainer({
           className="code-action-menu-container not-outside absolute flex items-center gap-0 text-xs text-gray-500"
           style={{ ...position }}
         >
-          <DropdownMenuLanguage
-            lang={codeFriendlyName}
-            open={openDropdownLanguage}
-            setOpen={setOpenDropdownLanguage}
-            editor={editor}
-            setIsShown={setShown}
-          />
+          {editable ? (
+            <DropdownMenuLanguage
+              lang={codeFriendlyName}
+              open={openDropdownLanguage}
+              setOpen={setOpenDropdownLanguage}
+              editor={editor}
+              setIsShown={setShown}
+            />
+          ) : (
+            <p className="px-1">{codeFriendlyName}</p>
+          )}
 
           <CopyButton editor={editor} getDomNode={getCodeDOMNode} />
         </div>

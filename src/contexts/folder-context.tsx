@@ -1,369 +1,397 @@
+"use client";
+
 import { TFolder } from "@/types/folder.type";
 import { TNote } from "@/types/note.type";
 import { del, get, patch, post } from "@/utils/request";
 import { useParams, useRouter } from "next/navigation";
 import {
-	createContext,
-	Dispatch,
-	SetStateAction,
-	useCallback,
-	useContext,
-	useEffect,
-	useRef,
-	useState,
+  createContext,
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 
 function createTreeData(data: (TFolder | TNote)[], parent_id?: number) {
-	const childs: (TFolder | TNote)[] = [];
+  const childs: (TFolder | TNote)[] = [];
 
-	for (const item of data) {
-		if (item.type === "folder") {
-			const folder = item as TFolder;
-			if (folder.parent_id === parent_id) {
-				childs.push(folder);
-				const dataChildren = createTreeData(data, folder.id);
-				folder.children = [...dataChildren] as TFolder[];
-			}
-		}
-	}
+  for (const item of data) {
+    if (item.type === "folder") {
+      const folder = item as TFolder;
+      if (folder.parent_id === parent_id) {
+        childs.push(folder);
+        const dataChildren = createTreeData(data, folder.id);
+        folder.children = [...dataChildren] as TFolder[];
+      }
+    }
+  }
 
-	for (const child of childs) {
-		const folder = child as TFolder;
-		folder.children = [
-			...folder.children,
-			...data.filter((it) => {
-				if (it.type === "note") {
-					const note = it as TNote;
-					return note.folder_id === folder.id;
-				}
-				return false;
-			}),
-		];
-	}
+  for (const child of childs) {
+    const folder = child as TFolder;
+    folder.children = [
+      ...folder.children,
+      ...data.filter((it) => {
+        if (it.type === "note") {
+          const note = it as TNote;
+          return note.folder_id === folder.id;
+        }
+        return false;
+      }),
+    ];
+  }
 
-	return childs;
+  return childs;
 }
 
 const Context = createContext<FolderContextType | null>(null);
 
 const useFolderState = () => {
-	const context = useContext(Context);
+  const context = useContext(Context);
 
-	if (!context) {
-		throw new Error("useFolderState must be used within a FolderProvider");
-	}
+  if (!context) {
+    throw new Error("useFolderState must be used within a FolderProvider");
+  }
 
-	return context;
+  return context;
 };
 
 type FolderContextType = {
-	data: (TFolder | TNote)[];
-	newData: (TFolder | TNote)[];
-	rootFolder: TFolder;
-	fetchDataTree: (id: number) => Promise<void>;
-	isLoading: boolean;
-	onUpdate: (
-		id: number,
-		payload: Partial<TFolder | TNote>,
-		type: TFolder["type"],
-		isUpdateData?: boolean
-	) => void | Promise<void>;
-	onAddNew: (
-		type: TFolder["type"],
-		payload: Partial<TFolder | TNote>,
-		updateData?: boolean
-	) => void | Promise<void>;
-	setData: Dispatch<SetStateAction<(TFolder | TNote)[]>>;
-	onDelete: (
-		id: number,
-		type: TFolder["type"],
-		updateData?: boolean
-	) => void | Promise<void>;
-	itemWorking: TFolder | TNote | null;
-	setItemWorking: Dispatch<SetStateAction<TFolder | TNote | null>>;
-	setFoldersDefaultOpen: Dispatch<SetStateAction<TFolder[] | null>>;
-	foldersDefaultOpen: TFolder[] | null;
+  data: (TFolder | TNote)[];
+  newData: (TFolder | TNote)[];
+  rootFolder?: TFolder;
+  fetchDataTree: (id: number) => Promise<void>;
+  isLoading: boolean;
+  onUpdate: (
+    id: number,
+    payload: Partial<TFolder | TNote>,
+    type: TFolder["type"],
+    isUpdateData?: boolean
+  ) => void | Promise<void>;
+  onAddNew: (
+    type: TFolder["type"],
+    payload: Partial<TFolder | TNote>,
+    updateData?: boolean
+  ) => void | Promise<void>;
+  setData: Dispatch<SetStateAction<(TFolder | TNote)[]>>;
+  onDelete: (
+    id: number,
+    type: TFolder["type"],
+    updateData?: boolean
+  ) => void | Promise<void>;
+  itemWorking: TFolder | TNote | null;
+  setItemWorking: Dispatch<SetStateAction<TFolder | TNote | null>>;
+  setFoldersDefaultOpen: Dispatch<SetStateAction<TFolder[] | null>>;
+  foldersDefaultOpen: TFolder[] | null;
 };
 
 const FolderContext = ({
-	children,
-	rootFolder,
+  children,
+  rootFolder,
 }: {
-	children: React.ReactNode;
-	rootFolder: TFolder;
+  children: React.ReactNode;
+  rootFolder?: TFolder;
 }) => {
-	const [data, setData] = useState<(TFolder | TNote)[]>([]);
-	const [newData, setNewData] = useState<(TFolder | TNote)[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [itemWorking, setItemWorking] = useState<TFolder | TNote | null>(null);
-	const [foldersDefaultOpen, setFoldersDefaultOpen] = useState<
-		TFolder[] | null
-	>(null);
+  const [data, setData] = useState<(TFolder | TNote)[]>([]);
+  const [newData, setNewData] = useState<(TFolder | TNote)[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [itemWorking, setItemWorking] = useState<TFolder | TNote | null>(null);
+  const [foldersDefaultOpen, setFoldersDefaultOpen] = useState<
+    TFolder[] | null
+  >(null);
 
-	const router = useRouter();
+  const router = useRouter();
 
-	const existIdsRef = useRef(new Set<number>());
-	const params = useParams();
-	const slug = params.slug as string | undefined;
+  const existIdsRef = useRef(new Set<number>());
+  const params = useParams();
+  const slug = params.slug as string | undefined;
 
-	const getFolders = async (folder_id?: number | null) => {
-		const res = await get(`/folders${folder_id ? "/detail/" + folder_id : ""}`);
+  useEffect(() => {
+    if (rootFolder) {
+      existIdsRef.current.add(rootFolder.id);
+    }
+  }, [rootFolder]);
 
-		const newData: TFolder[] = res.folders.map((f: TFolder) => {
-			return {
-				...f,
-				type: "folder",
-				children: [],
-			};
-		});
+  const getFolders = async (folder_id?: number | null) => {
+    const res = await get(`/folders${folder_id ? "/detail/" + folder_id : ""}`);
 
-		return newData;
-	};
+    const newData: TFolder[] = res.folders.map((f: TFolder) => {
+      return {
+        ...f,
+        type: "folder",
+        children: [],
+      };
+    });
 
-	const getNotes = async (folder_id?: number | null) => {
-		const res = await get(
-			`/notes${folder_id ? "?folder_id=" + folder_id : ""}`
-		);
-		const newData = res.notes.map((no: TNote) => ({ ...no, type: "note" }));
-		return newData;
-	};
+    return newData;
+  };
 
-	const fetchData = useCallback(async () => {
-		try {
-			setIsLoading(true);
-			const [folders, notes] = await Promise.all([getFolders(), getNotes()]);
+  const getNotes = async (folder_id?: number | null) => {
+    const res = await get(
+      `/notes${folder_id ? "?folder_id=" + folder_id : ""}`
+    );
+    const newData = res.notes.map((no: TNote) => ({ ...no, type: "note" }));
+    return newData;
+  };
 
-			setData([...folders, ...notes]);
-		} catch (error) {
-			console.log(error);
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [folders, notes] = await Promise.all([getFolders(), getNotes()]);
 
-	const fetchDataTree = useCallback(async (folder_id: number) => {
-		const existIds = existIdsRef.current;
+      setData([...folders, ...notes]);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-		if (existIds.has(folder_id)) {
-			return;
-		}
+  const fetchDataTree = useCallback(async (folder_id: number) => {
+    const existIds = existIdsRef.current;
 
-		existIds.add(folder_id);
+    if (existIds.has(folder_id)) {
+      return;
+    }
 
-		try {
-			setIsLoading(true);
-			const [folders, notes] = await Promise.all([
-				getFolders(folder_id),
-				getNotes(folder_id),
-			]);
+    existIds.add(folder_id);
 
-			setData((prev) => [...prev, ...folders, ...notes]);
-		} catch (error) {
-			console.log(error);
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
+    try {
+      setIsLoading(true);
+      const [folders, notes] = await Promise.all([
+        getFolders(folder_id),
+        getNotes(folder_id),
+      ]);
 
-	const onUpdate = useCallback(
-		async (
-			id: number,
-			payload: Partial<TFolder | TNote>,
-			type: TFolder["type"],
-			isUpdateData = true
-		) => {
-			try {
-				if (type === "folder") {
-					const newPayload = {
-						...payload,
-					} as Partial<TFolder>;
+      setData((prev) => [...prev, ...folders, ...notes]);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-					delete newPayload.createdAt;
-					delete newPayload.updatedAt;
-					delete newPayload.id;
+  const onUpdate = useCallback(
+    async (
+      id: number,
+      payload: Partial<TFolder | TNote>,
+      type: TFolder["type"],
+      isUpdateData = true
+    ) => {
+      try {
+        if (type === "folder") {
+          const newPayload = {
+            ...payload,
+          } as Partial<TFolder>;
 
-					await patch(`/folders/update/${id}`, newPayload);
+          delete newPayload.createdAt;
+          delete newPayload.updatedAt;
+          delete newPayload.id;
 
-					const folderUpdate = newPayload as TFolder;
+          await patch(`/folders/update/${id}`, newPayload);
 
-					if (isUpdateData) {
-						setData((prev) => {
-							return prev.map((it) => {
-								if (it.type === "folder" && it.id === id) {
-									it = it as TFolder;
-									if (folderUpdate.parent_id !== it.parent_id) {
-										setItemWorking(it);
-									}
-									return { ...it, ...folderUpdate };
-								}
+          const folderUpdate = newPayload as TFolder;
 
-								return it;
-							});
-						});
-					}
-				}
+          if (isUpdateData) {
+            setData((prev) => {
+              return prev.map((it) => {
+                if (it.type === "folder" && it.id === id) {
+                  it = it as TFolder;
+                  if (folderUpdate.parent_id !== it.parent_id) {
+                    setItemWorking(it);
+                  }
+                  return { ...it, ...folderUpdate };
+                }
 
-				if (type === "note") {
-					const newPayload = { ...payload } as Partial<TNote>;
-					delete newPayload.createdAt;
-					delete newPayload.updatedAt;
-					delete newPayload.id;
+                return it;
+              });
+            });
+          }
+        }
 
-					const res = await patch(`/notes/update/${id}`, newPayload);
+        if (type === "note") {
+          const newPayload = { ...payload } as Partial<TNote>;
+          delete newPayload.createdAt;
+          delete newPayload.updatedAt;
+          delete newPayload.id;
 
-					let newSlug = "";
+          const res = await patch(`/notes/update/${id}`, newPayload);
 
-					if (isUpdateData) {
-						setData((prev) => {
-							return prev.map((it) => {
-								if (it.type === "note" && it.id === id) {
-									it = it as TNote;
-									if (
-										newPayload.folder_id &&
-										newPayload.folder_id !== it.folder_id
-									) {
-										setItemWorking(it);
-									} else if (
-										newPayload.title &&
-										newPayload.title !== it.title &&
-										slug &&
-										slug === it.slug
-									) {
-										newSlug = res.slug;
-									}
-									return { ...it, ...newPayload, ...res };
-								}
+          let newSlug = "";
 
-								return it;
-							});
-						});
-					}
+          if (isUpdateData) {
+            setData((prev) => {
+              return prev.map((it) => {
+                if (it.type === "note" && it.id === id) {
+                  it = it as TNote;
+                  if (
+                    newPayload.folder_id &&
+                    newPayload.folder_id !== it.folder_id
+                  ) {
+                    setItemWorking(it);
+                  } else if (
+                    newPayload.title &&
+                    newPayload.title !== it.title &&
+                    slug &&
+                    slug === it.slug
+                  ) {
+                    newSlug = res.slug;
+                  }
+                  return { ...it, ...newPayload, ...res };
+                }
 
-					if (newSlug && newSlug !== slug) {
-						router.replace(`/${newSlug}`);
-					}
-				}
-			} catch (error) {
-				throw error;
-			}
-		},
-		[router, slug]
-	);
+                return it;
+              });
+            });
+          }
 
-	const onDelete = useCallback(
-		async (id: number, type: TFolder["type"], updateData = true) => {
-			try {
-				if (type === "folder") {
-					await del(`/folders/delete/${id}`);
-				}
-				if (type === "note") {
-					await del(`/notes/delete/${id}`);
-				}
+          if (newSlug && newSlug !== slug) {
+            router.replace(`/${newSlug}`);
+          }
+        }
+      } catch (error) {
+        throw error;
+      }
+    },
+    [router, slug]
+  );
 
-				if (updateData) {
-					const copy = [...data];
-					const filter = copy.filter((it) => {
-						if (it.type !== type) {
-							return true;
-						}
-						return it.id !== id;
-					});
-					setData(filter);
-				}
-			} catch (error) {
-				throw error;
-			}
-		},
-		[data]
-	);
+  const onDelete = useCallback(
+    async (id: number, type: TFolder["type"], updateData = true) => {
+      try {
+        if (type === "folder") {
+          await del(`/folders/delete/${id}`);
+        }
+        if (type === "note") {
+          await del(`/notes/delete/${id}`);
+        }
 
-	const onAddNew = useCallback(
-		async (
-			type: TFolder["type"],
-			payload: Partial<TFolder | TNote>,
-			updateData: boolean = true
-		) => {
-			try {
-				if (type === "folder") {
-					payload = payload as Partial<TFolder>;
+        if (updateData) {
+          const copy = [...data];
+          const filter = copy.filter((it) => {
+            if (it.type !== type) {
+              return true;
+            }
+            return it.id !== id;
+          });
+          setData(filter);
+        }
+      } catch (error) {
+        throw error;
+      }
+    },
+    [data]
+  );
 
-					const res = await post("/folders/create", payload);
+  const onAddNew = useCallback(
+    async (
+      type: TFolder["type"],
+      payload: Partial<TFolder | TNote>,
+      updateData: boolean = true
+    ) => {
+      try {
+        if (type === "folder") {
+          payload = payload as Partial<TFolder>;
 
-					const newPayload = {
-						...payload,
-						...res,
-						count_child: 0,
-						count_child_note: 0,
-						children: [] as TFolder[],
-						type,
-					};
+          const res = await post("/folders/create", payload);
 
-					setItemWorking(newPayload);
+          const newPayload = {
+            ...payload,
+            ...res,
+            count_child: 0,
+            count_child_note: 0,
+            children: [] as TFolder[],
+            type,
+          };
 
-					if (updateData) {
-						setData((prev) => [newPayload, ...prev]);
-					}
-				}
-				if (type === "note") {
-					payload = payload as Partial<TNote>;
-					const res = await post("/notes/create", payload);
+          setItemWorking(newPayload);
 
-					const newPayload = {
-						...payload,
-						...res,
-						type,
-					};
+          if (updateData) {
+            setData((prev) => [newPayload, ...prev]);
+          }
+        }
+        if (type === "note") {
+          payload = payload as Partial<TNote>;
+          const res = await post("/notes/create", payload);
 
-					setItemWorking(newPayload);
+          const newPayload = {
+            ...payload,
+            ...res,
+            type,
+          };
 
-					if (updateData) {
-						setData((prev) => [newPayload, ...prev]);
-					}
-				}
-			} catch (error) {
-				throw error;
-			}
-		},
-		[]
-	);
+          setItemWorking(newPayload);
 
-	useEffect(() => {
-		fetchData();
-	}, [fetchData]);
+          if (updateData) {
+            setData((prev) => [newPayload, ...prev]);
+          }
+        }
+      } catch (error) {
+        throw error;
+      }
+    },
+    []
+  );
 
-	useEffect(() => {
-		let folders = createTreeData(data, rootFolder.id);
-		folders = [
-			...folders,
-			...data.filter((it) => {
-				if (it.type === "note") {
-					const note = it as TNote;
-					return note.folder_id === rootFolder.id;
-				}
-				return false;
-			}),
-		];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-		setNewData(folders);
-	}, [data, rootFolder]);
+  useEffect(() => {
+    if (rootFolder) {
+      let folders = createTreeData(data, rootFolder.id);
+      folders = [
+        ...folders,
+        ...data.filter((it) => {
+          if (it.type === "note") {
+            const note = it as TNote;
+            return note.folder_id === rootFolder.id;
+          }
+          return false;
+        }),
+      ];
 
-	const value = {
-		data,
-		newData,
-		fetchDataTree,
-		isLoading,
-		onUpdate,
-		setData,
-		onDelete,
-		itemWorking,
-		setItemWorking,
-		onAddNew,
-		rootFolder,
-		setFoldersDefaultOpen,
-		foldersDefaultOpen,
-	};
+      setNewData(folders);
+    }
+  }, [data, rootFolder]);
 
-	return <Context.Provider value={value}>{children}</Context.Provider>;
+  const value = {
+    data,
+    newData,
+    fetchDataTree,
+    isLoading,
+    onUpdate,
+    setData,
+    onDelete,
+    itemWorking,
+    setItemWorking,
+    onAddNew,
+    rootFolder,
+    setFoldersDefaultOpen,
+    foldersDefaultOpen,
+  };
+
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 };
 
-export { FolderContext, useFolderState };
+const FolderContextProvider = ({ children }: { children: React.ReactNode }) => {
+  const [rootFolder, setRootFolder] = useState<TFolder | undefined>();
+
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        const res = await get("/folders/root");
+        setRootFolder(res);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    getData();
+  }, []);
+
+  return <FolderContext rootFolder={rootFolder}>{children}</FolderContext>;
+};
+
+export { FolderContext, useFolderState, FolderContextProvider };
