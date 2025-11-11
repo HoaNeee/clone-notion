@@ -12,6 +12,15 @@ import {
 	AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "./ui/dialog";
+import { LucideProps } from "lucide-react";
 
 interface Props {
 	open?: boolean;
@@ -21,11 +30,40 @@ interface Props {
 	description?: string | React.ReactNode;
 	onOk?: () => void;
 	loading?: boolean;
+	dialogType?: "row" | "column";
+	icon?: React.ForwardRefExoticComponent<
+		Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
+	>;
+	okText?: string;
+	cancelText?: string;
+	okButton?: React.ReactNode;
+	cancelButton?: React.ReactNode;
 }
 
 const AlertDialogConfirm = (props: Props) => {
-	const { open, setOpen, trigger, title, description, onOk, loading } = props;
-	return (
+	const {
+		open,
+		setOpen,
+		trigger,
+		title,
+		description,
+		onOk,
+		loading,
+		dialogType = "row",
+		icon,
+		okText,
+		cancelText,
+		okButton,
+		cancelButton,
+	} = props;
+
+	const titleDefault = "Are you sure you want to log out?";
+	const descriptionDefault =
+		"You will need to log back in to access your Notion workspaces.";
+
+	const Icon = icon;
+
+	return dialogType === "row" ? (
 		<AlertDialog onOpenChange={setOpen} open={open}>
 			{trigger ? (
 				<AlertDialogTrigger asChild>
@@ -34,13 +72,9 @@ const AlertDialogConfirm = (props: Props) => {
 			) : null}
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>
-						{title || "Are you absolutely sure?"}
-					</AlertDialogTitle>
+					<AlertDialogTitle>{title || titleDefault}</AlertDialogTitle>
 					<AlertDialogDescription asChild={!!description}>
-						{description ||
-							`This action cannot be undone. This will permanently delete your
-            data and remove your data from our servers.`}
+						{description || descriptionDefault}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
@@ -49,6 +83,30 @@ const AlertDialogConfirm = (props: Props) => {
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
+	) : (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent showCloseButton={false} className="w-xs">
+				<DialogHeader className="text-neutral-700">
+					<DialogTitle asChild>
+						<div className="flex flex-col items-center justify-center gap-2 font-normal">
+							{Icon && <Icon />}
+							<p className="font-semibold">{title || titleDefault}</p>
+						</div>
+					</DialogTitle>
+					<DialogDescription className="text-center">
+						{description || descriptionDefault}
+					</DialogDescription>
+				</DialogHeader>
+				<div className="flex flex-col gap-2">
+					{okButton || <Button onClick={onOk}>{okText || "Continue"}</Button>}
+					<DialogClose asChild>
+						{cancelButton || (
+							<Button variant="outline">{cancelText || "Cancel"}</Button>
+						)}
+					</DialogClose>
+				</div>
+			</DialogContent>
+		</Dialog>
 	);
 };
 

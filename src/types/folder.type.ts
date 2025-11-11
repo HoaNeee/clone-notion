@@ -4,6 +4,8 @@ export type TFolder = {
 	id: number;
 	user_id: number;
 	parent_id: number | null;
+	workspace_id: number;
+	is_in_teamspace: boolean;
 	title: string;
 	createdAt: string;
 	updatedAt: string;

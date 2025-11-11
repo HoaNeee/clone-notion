@@ -1,21 +1,18 @@
 import React from "react";
-import { Sidebar, SidebarContent, SidebarHeader } from "./ui/sidebar";
-import AppSidebarHeader from "./sidebar-header";
-import SidebarNavMainContainer from "./sidebar-nav-main";
-import SidebarNavSetting from "./sidebar-nav-setting";
+
+import AppSidebarClient from "./app-sidebar-client";
+import { Sidebar } from "./ui/sidebar";
 
 const AppSidebar = () => {
-  return (
-    <Sidebar side="left" className="not-outside group/sidebar">
-      <SidebarHeader>
-        <AppSidebarHeader />
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarNavMainContainer />
-        <SidebarNavSetting />
-      </SidebarContent>
-    </Sidebar>
-  );
+	return (
+		<Sidebar
+			side="left"
+			collapsible="offcanvas"
+			className="flex-row *:data-[sidebar=sidebar]:flex-row z-21"
+		>
+			<AppSidebarClient />
+		</Sidebar>
+	);
 };
 
 export default AppSidebar;

@@ -7,90 +7,136 @@ import { TNote } from "@/types/note.type";
 import { get } from "@/utils/request";
 import React, { useCallback, useEffect, useState } from "react";
 import NoteHeader from "./note-header";
-import { handleError } from "@/utils/error-handler";
+import { TWorkspace } from "@/types/workspace.type";
+import { logAction, sleep } from "@/lib/utils";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { useNote } from "@/contexts/note-context";
 
-const DetailNotePage = ({ slug }: { slug: string }) => {
-  const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
-  const [note, setNote] = useState<TNote | null>(null);
+const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
+	const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
 
-  //FIX THEN LATER: handle forbidden access note
-  const [isForbidden, setIsForbidden] = useState(false);
+	const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
+	const { currentWorkspace, setCurrentWorkspace } = useWorkspace();
+	const { currentNote, setCurrentNote, setDifferentNotesPublished } = useNote();
+	const [loading, setLoading] = useState<boolean>(true);
 
-  const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
+	const getNoteDetail = useCallback(
+		async (slug: string) => {
+			try {
+				setLoading(true);
 
-  const getNoteDetail = useCallback(async () => {
-    try {
-      const res = await get(`/notes/detail/${slug}`);
-      setNote(res.note);
-      setFolderExistsToOpen(res.folders);
-    } catch (error) {
-      const err = handleError(error);
-      if (err.isForbidden) {
-        setIsForbidden(true);
-      } else {
-        console.log(error);
-      }
-      return;
-    }
-  }, [slug]);
+				//simulate loading
+				await sleep(1000);
 
-  useEffect(() => {
-    getNoteDetail();
-  }, [getNoteDetail]);
+				const res = (await get(`/notes/detail/${slug}`)) as {
+					note: TNote;
+					folder: {
+						folder: TFolder;
+						foldersBreadcrumb: TFolder[];
+					} | null;
+					workspace: TWorkspace;
+					differentNotesPublished: TNote[];
+				};
+				setCurrentNote(res.note);
+				if (res.folder) {
+					setFolderExistsToOpen(res.folder.foldersBreadcrumb);
+				}
+				if (
+					res.workspace &&
+					(!currentWorkspace || currentWorkspace.id !== res.workspace.id)
+				) {
+					setCurrentWorkspace({
+						...res.workspace,
+						is_guest:
+							res.workspace.is_guest ||
+							(res.note.status === "shared" &&
+								!res.folder?.folder.is_in_teamspace),
+					});
 
-  useEffect(() => {
-    if (folderExistsToOpen.length === 0) {
-      return;
-    }
+					localStorage.setItem(
+						"last_workspace_id",
+						res.workspace.id.toString()
+					);
+				}
+				setDifferentNotesPublished(res.differentNotesPublished);
+			} catch (error) {
+				logAction("Error fetching note detail:", error);
+				setCurrentNote(null);
+				setDifferentNotesPublished([]);
+				setCurrentWorkspace(null);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[
+			currentWorkspace,
+			setCurrentWorkspace,
+			setCurrentNote,
+			setDifferentNotesPublished,
+		]
+	);
 
-    const fetchFolders = async () => {
-      if (folderExistsToOpen.length > 0) {
-        for (const folder of folderExistsToOpen) {
-          await fetchDataTree(folder.id);
-        }
-        setFoldersDefaultOpen(folderExistsToOpen.reverse());
-      }
-    };
-    fetchFolders();
-  }, [folderExistsToOpen, fetchDataTree, setFoldersDefaultOpen]);
+	useEffect(() => {
+		if (slug) {
+			getNoteDetail(slug);
+		}
+	}, [getNoteDetail, slug]);
 
-  if (isForbidden) {
-    return (
-      <div className="mt-10 text-center text-red-500">
-        You do not have permission to access this note.
-      </div>
-    );
-  }
+	useEffect(() => {
+		if (folderExistsToOpen.length === 0) {
+			return;
+		}
 
-  if (!note) {
-    return <></>;
-  }
+		const fetchFolders = async () => {
+			for (const folder of folderExistsToOpen) {
+				await fetchDataTree(folder.id);
+			}
+			setFoldersDefaultOpen(folderExistsToOpen.reverse());
+		};
+		fetchFolders();
+	}, [folderExistsToOpen, fetchDataTree, setFoldersDefaultOpen]);
 
-  return (
-    <DetailNotePageContainer note={note}>
-      <MyEditor editorStateInitial={note.content} note={note} />
-    </DetailNotePageContainer>
-  );
+	if (loading) {
+		return <>Loading...</>;
+	}
+
+	if (token && !currentNote) {
+		return (
+			<div className="mt-10 text-center text-red-500">
+				You do not have permission to access this note.
+			</div>
+		);
+	}
+
+	if (!currentNote) {
+		return null;
+	}
+
+	return (
+		<DetailNotePageContainer note={currentNote}>
+			<MyEditor editorStateInitial={currentNote.content} note={currentNote} />
+		</DetailNotePageContainer>
+	);
 };
 
 export const DetailNotePageContainer = ({
-  note,
-  children,
+	note,
+	children,
 }: {
-  note: TNote;
-  children: React.ReactNode;
+	note: TNote;
+	children: React.ReactNode;
 }) => {
-  return (
-    <div className="w-full h-full">
-      <NoteHeader note={note} />
-      <div className="p-3 w-full h-full relative flex flex-col items-center">
-        <div className="pl-15 max-w-4xl pt-16 pb-6 w-full">
-          <h1 className="text-4xl font-bold">{note.title || "New File"}</h1>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+	return (
+		<div className="w-full h-full">
+			<NoteHeader note={note} />
+			<div className="p-3 w-full h-full relative flex flex-col items-center">
+				<div className="pl-15 max-w-4xl pt-16 pb-6 w-full">
+					<h1 className="text-4xl font-bold">{note.title || "New File"}</h1>
+				</div>
+				{children}
+			</div>
+		</div>
+	);
 };
 
 export default DetailNotePage;
