@@ -16,6 +16,7 @@ import {
 } from "react";
 import { useWorkspace } from "./workspace-context";
 import { logAction } from "@/lib/utils";
+import { useNote } from "./note-context";
 
 function createTreeData(data: (TFolder | TNote)[], parent_id?: number) {
 	const childs: (TFolder | TNote)[] = [];
@@ -374,7 +375,7 @@ const FolderContext = ({
 					}
 					if (type === "note") {
 						const noteUpdate = payload as Partial<TNote>;
-						setDataInTeamspace((prev) => {
+						dispatchData((prev) => {
 							return prev.map((n) => {
 								if (n.type === "note" && n.id === id) {
 									n = n as TNote;
