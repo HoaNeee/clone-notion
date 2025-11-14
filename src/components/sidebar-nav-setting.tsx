@@ -10,9 +10,9 @@ import { Settings, Trash2 } from "lucide-react";
 const SidebarNavSetting = () => {
   return (
     <SidebarGroup className="py-0">
-      <SidebarMenu>
+      <SidebarMenu className="text-neutral-600 dark:text-neutral-400">
         <SidebarMenuItem className="cursor-pointer">
-          <SidebarMenuButton className="text-neutral-600 font-semibold cursor-pointer">
+          <SidebarMenuButton className="font-semibold cursor-pointer">
             <div className="flex items-center gap-2">
               <Settings size={20} />
               <p>Settings</p>
@@ -20,7 +20,7 @@ const SidebarNavSetting = () => {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem className="cursor-pointer">
-          <SidebarMenuButton className="text-neutral-600 font-semibold cursor-pointer">
+          <SidebarMenuButton className="font-semibold cursor-pointer">
             <div className="flex items-center gap-2">
               <Trash2 size={20} />
               <p>Trash</p>

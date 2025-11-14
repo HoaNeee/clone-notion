@@ -6,34 +6,34 @@ import { cookies } from "next/dist/server/request/cookies";
 import { NoteContext } from "@/contexts/note-context";
 
 export default async function DashboardLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	const token = (await cookies()).get("note_jwt_token")?.value;
+  const token = (await cookies()).get("note_jwt_token")?.value;
 
-	if (!token) {
-		return (
-			<SidebarProvider>
-				<SidebarInset>
-					<main className="w-full h-full">{children}</main>
-				</SidebarInset>
-			</SidebarProvider>
-		);
-	}
+  if (!token) {
+    return (
+      <SidebarProvider>
+        <SidebarInset>
+          <main className="w-full h-full">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
-	return (
-		<SidebarProvider>
-			<FolderContextProvider>
-				<NoteContext>
-					<ReactDragAndDropProvider>
-						<AppSidebar />
-					</ReactDragAndDropProvider>
-					<SidebarInset>
-						<main className="w-full h-full">{children}</main>
-					</SidebarInset>
-				</NoteContext>
-			</FolderContextProvider>
-		</SidebarProvider>
-	);
+  return (
+    <SidebarProvider>
+      <NoteContext>
+        <FolderContextProvider>
+          <ReactDragAndDropProvider>
+            <AppSidebar />
+          </ReactDragAndDropProvider>
+          <SidebarInset>
+            <main className="w-full h-full">{children}</main>
+          </SidebarInset>
+        </FolderContextProvider>
+      </NoteContext>
+    </SidebarProvider>
+  );
 }

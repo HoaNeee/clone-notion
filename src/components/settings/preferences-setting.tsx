@@ -1,4 +1,6 @@
-import { ChevronDown } from "lucide-react";
+"use client";
+
+import { Check, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,7 @@ import {
 } from "../ui/select";
 import { SettingMenu, SettingMenuGroup, SettingMenuItem } from "./settings";
 import { Button } from "../ui/button";
+import { useTheme } from "next-themes";
 
 const LanguageSelector = () => {
   return (
@@ -53,6 +56,8 @@ const TimeZoneSelector = () => {
 };
 
 const PreferencesSettings = () => {
+  const { theme, setTheme } = useTheme();
+
   return (
     <div className="flex flex-col w-full h-full overflow-hidden rounded-md">
       <SettingMenuGroup
@@ -66,16 +71,22 @@ const PreferencesSettings = () => {
             action={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant={"ghost"} className="font-normal">
-                    Light <ChevronDown />
+                  <Button variant={"ghost"} className="font-normal capitalize">
+                    {theme} <ChevronDown />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-10000">
-                  <DropdownMenuItem className="cursor-pointer">
-                    Light
+                  <DropdownMenuItem
+                    className="flex justify-between cursor-pointer"
+                    onClick={() => setTheme("light")}
+                  >
+                    Light {theme === "light" ? <Check /> : null}
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    Dark
+                  <DropdownMenuItem
+                    className="flex justify-between cursor-pointer"
+                    onClick={() => setTheme("dark")}
+                  >
+                    Dark {theme === "dark" ? <Check /> : null}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

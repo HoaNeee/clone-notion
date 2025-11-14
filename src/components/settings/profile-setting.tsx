@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { SettingMenu, SettingMenuGroup, SettingMenuItem } from "./settings";
 import { Button } from "../ui/button";
 import { ChevronRight } from "lucide-react";
@@ -16,10 +16,6 @@ const ProfileSettings = () => {
   const [fullname, setFullname] = React.useState(user?.fullname || "");
 
   const inputRef = React.useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    console.log(fullname);
-  }, [fullname]);
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden rounded-md">

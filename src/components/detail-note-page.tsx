@@ -13,130 +13,121 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { useNote } from "@/contexts/note-context";
 
 const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
-	const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
+  const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
 
-	const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
-	const { currentWorkspace, setCurrentWorkspace } = useWorkspace();
-	const { currentNote, setCurrentNote, setDifferentNotesPublished } = useNote();
-	const [loading, setLoading] = useState<boolean>(true);
+  const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
+  const { setCurrentWorkspace } = useWorkspace();
+  const { currentNote, setCurrentNote, setDifferentNotesPublished } = useNote();
+  const [loading, setLoading] = useState<boolean>(true);
 
-	const getNoteDetail = useCallback(
-		async (slug: string) => {
-			try {
-				setLoading(true);
+  const getNoteDetail = useCallback(
+    async (slug: string) => {
+      try {
+        setLoading(true);
 
-				//simulate loading
-				await sleep(1000);
+        //simulate loading
+        await sleep(1000);
 
-				const res = (await get(`/notes/detail/${slug}`)) as {
-					note: TNote;
-					folder: {
-						folder: TFolder;
-						foldersBreadcrumb: TFolder[];
-					} | null;
-					workspace: TWorkspace;
-					differentNotesPublished: TNote[];
-				};
-				setCurrentNote(res.note);
-				if (res.folder) {
-					setFolderExistsToOpen(res.folder.foldersBreadcrumb);
-				}
-				if (
-					res.workspace &&
-					(!currentWorkspace || currentWorkspace.id !== res.workspace.id)
-				) {
-					setCurrentWorkspace({
-						...res.workspace,
-						is_guest:
-							res.workspace.is_guest ||
-							(res.note.status === "shared" &&
-								!res.folder?.folder.is_in_teamspace),
-					});
+        const res = (await get(`/notes/detail/${slug}`)) as {
+          note: TNote;
+          folder: {
+            folder: TFolder;
+            foldersBreadcrumb: TFolder[];
+          } | null;
+          workspace: TWorkspace;
+          differentNotesPublished: TNote[];
+        };
 
-					localStorage.setItem(
-						"last_workspace_id",
-						res.workspace.id.toString()
-					);
-				}
-				setDifferentNotesPublished(res.differentNotesPublished);
-			} catch (error) {
-				logAction("Error fetching note detail:", error);
-				setCurrentNote(null);
-				setDifferentNotesPublished([]);
-				setCurrentWorkspace(null);
-			} finally {
-				setLoading(false);
-			}
-		},
-		[
-			currentWorkspace,
-			setCurrentWorkspace,
-			setCurrentNote,
-			setDifferentNotesPublished,
-		]
-	);
+        setCurrentNote(res.note);
+        if (res.folder) {
+          setFolderExistsToOpen(res.folder.foldersBreadcrumb);
+        }
+        if (res.workspace) {
+          setCurrentWorkspace({
+            ...res.workspace,
+          });
 
-	useEffect(() => {
-		if (slug) {
-			getNoteDetail(slug);
-		}
-	}, [getNoteDetail, slug]);
+          if (!res.workspace.is_guest) {
+            localStorage.setItem(
+              "last_workspace_id",
+              res.workspace.id.toString()
+            );
+          }
+        }
+        setDifferentNotesPublished(res.differentNotesPublished);
+      } catch (error) {
+        logAction("Error fetching note detail:", error);
+        setCurrentNote(null);
+        setDifferentNotesPublished([]);
+        setCurrentWorkspace(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setCurrentWorkspace, setCurrentNote, setDifferentNotesPublished]
+  );
 
-	useEffect(() => {
-		if (folderExistsToOpen.length === 0) {
-			return;
-		}
+  useEffect(() => {
+    if (slug) {
+      getNoteDetail(slug);
+    }
+  }, [getNoteDetail, slug]);
 
-		const fetchFolders = async () => {
-			for (const folder of folderExistsToOpen) {
-				await fetchDataTree(folder.id);
-			}
-			setFoldersDefaultOpen(folderExistsToOpen.reverse());
-		};
-		fetchFolders();
-	}, [folderExistsToOpen, fetchDataTree, setFoldersDefaultOpen]);
+  useEffect(() => {
+    if (folderExistsToOpen.length === 0) {
+      return;
+    }
 
-	if (loading) {
-		return <>Loading...</>;
-	}
+    const fetchFolders = async () => {
+      for (const folder of folderExistsToOpen) {
+        await fetchDataTree(folder.id);
+      }
+      setFoldersDefaultOpen(folderExistsToOpen.reverse());
+    };
+    fetchFolders();
+  }, [folderExistsToOpen, fetchDataTree, setFoldersDefaultOpen]);
 
-	if (token && !currentNote) {
-		return (
-			<div className="mt-10 text-center text-red-500">
-				You do not have permission to access this note.
-			</div>
-		);
-	}
+  if (loading) {
+    return <>Loading...</>;
+  }
 
-	if (!currentNote) {
-		return null;
-	}
+  if (token && !currentNote) {
+    return (
+      <div className="mt-10 text-center text-red-500">
+        You do not have permission to access this note.
+      </div>
+    );
+  }
 
-	return (
-		<DetailNotePageContainer note={currentNote}>
-			<MyEditor editorStateInitial={currentNote.content} note={currentNote} />
-		</DetailNotePageContainer>
-	);
+  if (!currentNote) {
+    return null;
+  }
+
+  return (
+    <DetailNotePageContainer note={currentNote}>
+      <MyEditor editorStateInitial={currentNote.content} note={currentNote} />
+    </DetailNotePageContainer>
+  );
 };
 
 export const DetailNotePageContainer = ({
-	note,
-	children,
+  note,
+  children,
 }: {
-	note: TNote;
-	children: React.ReactNode;
+  note: TNote;
+  children: React.ReactNode;
 }) => {
-	return (
-		<div className="w-full h-full">
-			<NoteHeader note={note} />
-			<div className="p-3 w-full h-full relative flex flex-col items-center">
-				<div className="pl-15 max-w-4xl pt-16 pb-6 w-full">
-					<h1 className="text-4xl font-bold">{note.title || "New File"}</h1>
-				</div>
-				{children}
-			</div>
-		</div>
-	);
+  return (
+    <div className="w-full h-full">
+      <NoteHeader note={note} />
+      <div className="relative flex flex-col items-center w-full h-full p-3">
+        <div className="pl-15 w-full max-w-4xl pt-16 pb-6">
+          <h1 className="text-4xl font-bold">{note.title || "New File"}</h1>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 };
 
 export default DetailNotePage;

@@ -18,6 +18,7 @@ import PreferencesSettings from "./preferences-setting";
 import NotificationsSettings from "./notification-setting";
 import EditorSettings from "./editor-setting";
 import WorkspaceGeneralSettings from "./workspace-general-setting";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 const TabGroup = ({ children }: { children: React.ReactNode }) => {
   return <div className="flex flex-col w-full gap-0.5 mb-2">{children}</div>;
@@ -40,10 +41,12 @@ const TabNavSetting = () => {
           name: user?.fullname || "Profile",
           value: "profile",
           icon: (
-            <div className="size-5 bg-neutral-400/60 text-neutral-600 flex items-center justify-center text-xs rounded-full">
-              {user?.avatar ||
-                (user?.fullname ? user.fullname.charAt(0).toUpperCase() : "U")}
-            </div>
+            <Avatar className="size-5">
+              <AvatarImage src={user?.avatar || ""} />
+              <AvatarFallback className="bg-neutral-300/60 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200 flex items-center justify-center text-xs rounded-full">
+                {user?.fullname ? user.fullname.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
+            </Avatar>
           ),
         },
         {
@@ -102,9 +105,9 @@ const TabNavSetting = () => {
     <Tabs
       orientation="vertical"
       defaultValue={tabs[0].menu[0].value}
-      className="flex flex-row items-start w-full h-full gap-4"
+      className="flex flex-row items-start w-full h-full gap-0"
     >
-      <TabsList className="shrink-0 bg-neutral-50 grid items-start justify-start w-1/5 h-full max-h-full grid-cols-1 p-3">
+      <TabsList className="shrink-0 bg-neutral-50 dark:bg-neutral-800 grid items-start justify-start w-1/5 h-full max-h-full grid-cols-1 p-3">
         <div className="flex flex-col w-full h-full gap-0">
           {tabs.map((tabGroup) => {
             return (
@@ -128,7 +131,7 @@ const TabNavSetting = () => {
                       <TabsTrigger
                         key={key}
                         value={tab.value}
-                        className={`data-[state=active]:bg-neutral-200 data-[state=active]:text-primary/80 text-neutral-500 justify-start px-2.5 py-1 h-fit w-full data-[state=active]:shadow-none cursor-pointer hover:bg-neutral-200/50 gap-2`}
+                        className={`data-[state=active]:bg-neutral-200 data-[state=active]:text-primary/80 text-neutral-500 justify-start px-2.5 py-1 h-fit w-full data-[state=active]:shadow-none cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-700 gap-2`}
                       >
                         {Icon}{" "}
                         <span className="line-clamp-1 text-ellipsis text-start flex-1 inline-block">
@@ -142,7 +145,7 @@ const TabNavSetting = () => {
                     <TabsTrigger
                       key={key}
                       value={tab.value}
-                      className={`data-[state=active]:bg-neutral-200 data-[state=active]:text-primary/80 text-neutral-500 justify-start px-3 py-1 h-fit w-full data-[state=active]:shadow-none cursor-pointer hover:bg-neutral-200/50 gap-0.5`}
+                      className={`data-[state=active]:bg-neutral-200 data-[state=active]:text-primary/80 text-neutral-500 justify-start px-3 py-1 h-fit w-full data-[state=active]:shadow-none cursor-pointer hover:bg-neutral-200/50 gap-0.5 dark:hover:bg-neutral-700`}
                     >
                       {Icon}
                       {tab.name}

@@ -11,7 +11,7 @@ const SettingMenuGroup = ({
   className?: string;
 }) => {
   return (
-    <div className={`flex flex-col w-full h-full ${className}`}>
+    <div className={`flex flex-col w-full not-first:mt-3 ${className}`}>
       <SettingMenuGroupLabel isSeparator>{label}</SettingMenuGroupLabel>
       <div className="flex-1 w-full">{children}</div>
     </div>
