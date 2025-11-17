@@ -2,12 +2,12 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
+	Sidebar,
+	SidebarContent,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
 } from "./ui/sidebar";
 import AppSidebarHeader from "./sidebar-header";
 import SidebarNavMainContainer from "./sidebar-nav-main";
@@ -19,327 +19,428 @@ import { logAction } from "@/lib/utils";
 import { get, post } from "@/utils/request";
 import { TRequest } from "@/types/request.type";
 import { Button } from "./ui/button";
-import { Check, X } from "lucide-react";
+import { Archive, Bell, BookmarkCheck, Check, Trash, X } from "lucide-react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useRequest } from "@/contexts/request-context";
 import { useAuth } from "@/contexts/auth-context";
 import { usePathname } from "next/navigation";
+import { VariantProps } from "class-variance-authority";
 
 const SidebarInboxItem = ({ req }: { req: TRequest }) => {
-  const { setRequests } = useRequest();
+	const { setRequests } = useRequest();
+	const { currentWorkspace } = useWorkspace();
 
-  const renderTitle = (req: TRequest) => {
-    const sender_fullname = (
-      <span className="text-primary font-medium">
-        {" "}
-        {req.sender_info?.fullname || "Someone"}{" "}
-      </span>
-    );
+	const {
+		state: { user },
+	} = useAuth();
 
-    const receiver_fullname = (
-      <span className="text-primary font-medium">
-        {" "}
-        {req.receiver_info?.fullname || "Someone"}{" "}
-      </span>
-    );
+	const actionElementRef = React.useRef<HTMLDivElement>(null);
 
-    const getTitleMessage = (req: TRequest) => {
-      if (req.request_type === "invite") {
-        return (
-          <>
-            invited{" "}
-            {req.type_action === "other"
-              ? receiver_fullname
-              : req.type_action === "send"
-              ? receiver_fullname
-              : " you "}{" "}
-            to{" "}
-          </>
-        );
-      }
+	const renderTitle = (req: TRequest) => {
+		const sender_fullname = (
+			<span className="text-primary font-medium">
+				{" "}
+				{req.sender_info?.fullname || "Someone"}{" "}
+			</span>
+		);
 
-      if (req.request_type === "request") {
-        return (
-          <>
-            requested{" "}
-            {req.type_action === "other"
-              ? receiver_fullname
-              : req.type_action === "send"
-              ? receiver_fullname
-              : " you "}{" "}
-            to join{" "}
-          </>
-        );
-      }
+		const receiver_fullname = (
+			<span className="text-primary font-medium">
+				{" "}
+				{req.receiver_info?.fullname || "Someone"}{" "}
+			</span>
+		);
 
-      if (req.request_type === "remove") {
-        return (
-          <>
-            removed{" "}
-            {req.type_action === "other"
-              ? receiver_fullname
-              : req.type_action === "send"
-              ? receiver_fullname
-              : " you "}{" "}
-            from{" "}
-          </>
-        );
-      }
+		const getTitleMessage = (req: TRequest) => {
+			if (req.request_type === "invite") {
+				return (
+					<>
+						invited{" "}
+						{req.type_action === "other"
+							? receiver_fullname
+							: req.type_action === "send"
+							? receiver_fullname
+							: " you "}{" "}
+						to{" "}
+					</>
+				);
+			}
 
-      return null;
-    };
+			if (req.request_type === "request") {
+				return (
+					<>
+						requested{" "}
+						{req.type_action === "other"
+							? receiver_fullname
+							: req.type_action === "send"
+							? receiver_fullname
+							: " you "}{" "}
+						to join{" "}
+					</>
+				);
+			}
 
-    return (
-      <div className="flex flex-wrap gap-1 pr-5 break-all">
-        {req.type_action === "other"
-          ? sender_fullname
-          : req.type_action === "send"
-          ? "You"
-          : sender_fullname}
+			if (req.request_type === "remove") {
+				return (
+					<>
+						removed{" "}
+						{req.type_action === "other"
+							? receiver_fullname
+							: req.type_action === "send"
+							? receiver_fullname
+							: " you "}{" "}
+						from{" "}
+					</>
+				);
+			}
 
-        <span className="text-neutral-600">{getTitleMessage(req)}</span>
-        <p className="font-medium">{req.ref_data_info?.title || "Untitled"}</p>
-      </div>
-    );
-  };
+			return null;
+		};
 
-  const action = (
-    <div className="flex flex-col gap-1">
-      {req.type_action === "receive" ? (
-        <Button className="size-6 p-0 rounded-sm" variant={"outline"}>
-          <Check />
-        </Button>
-      ) : null}
-      {req.type_action === "send" ? (
-        //cancel sent request
-        <Button
-          className="size-6 opacity-80 p-0 rounded-sm"
-          variant={"destructive"}
-        >
-          <X />
-        </Button>
-      ) : (
-        <Button
-          className="size-6 opacity-80 p-0 rounded-sm"
-          variant={"destructive"}
-        >
-          <X />
-        </Button>
-      )}
-    </div>
-  );
+		return (
+			<div className="flex flex-wrap gap-1 pr-5 break-all">
+				{req.type_action === "other"
+					? sender_fullname
+					: req.type_action === "send"
+					? "You"
+					: sender_fullname}
 
-  const dateHTML = (
-    <div className="">
-      {req.status === "pending" && req.request_type === "request"
-        ? action
-        : "Oct"}
-    </div>
-  );
+				<span className="text-neutral-600">{getTitleMessage(req)}</span>
+				<p className="font-medium">{req.ref_data_info?.title || "Untitled"}</p>
+			</div>
+		);
+	};
 
-  const handleRead = useCallback(async () => {
-    try {
-      await post(`/requests/${req.id}/read`);
-      setRequests((prev) => {
-        return prev.map((re) => {
-          if (re.id === req.id) {
-            return {
-              ...re,
-              is_read: 1,
-            };
-          }
-          return re;
-        });
-      });
-    } catch (error) {
-      logAction("Error marking request as read:", error);
-    }
-  }, [req, setRequests]);
+	const handleChangeNotification = useCallback(() => {
+		console.log("change notification", req);
+	}, [req]);
 
-  return req.ref_link ? (
-    <Link
-      href={req.ref_link}
-      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground whitespace-nowrap min-h-20 relative flex items-center gap-2 p-4 text-sm leading-tight border-b"
-      onPointerDown={handleRead}
-    >
-      <div className="flex items-center justify-between w-full gap-2">
-        <div className="flex items-center gap-2">
-          <Avatar className="bg-neutral-300">
-            <AvatarImage src={""} />
-            <AvatarFallback>
-              <span className="text-xs">U</span>
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            {renderTitle(req)}
-            <p className="text-ellipsis line-clamp-1 text-neutral-400 mt-1 text-xs">
-              {req.message}
-            </p>
-          </div>
-        </div>
-        {dateHTML}
-      </div>
-      {!req.is_read && (
-        <div className="size-1.5 top-3 right-2 absolute bg-blue-500 rounded-full" />
-      )}
-    </Link>
-  ) : (
-    <div
-      className="whitespace-nowrap min-h-20 flex items-center p-4 text-sm leading-tight border-b"
-      onPointerDown={handleRead}
-    >
-      <div className="flex items-center justify-between w-full gap-2">
-        <div className="flex items-center gap-2">
-          <Avatar className="bg-neutral-300">
-            <AvatarImage src={""} />
-            <AvatarFallback>
-              <span className="text-xs">U</span>
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            {renderTitle(req)}
-            <p className="text-ellipsis line-clamp-1 text-neutral-400 mt-1 text-xs">
-              {req.message}
-            </p>
-          </div>
-        </div>
-        {dateHTML}
-      </div>
-    </div>
-  );
+	const handleArchiveRequest = useCallback(() => {
+		console.log("archive request", req);
+	}, [req]);
+
+	const handleRemoveRequest = useCallback(() => {
+		console.log("remove request", req);
+	}, [req]);
+
+	const handleMarkAsRead = useCallback(
+		async (user_id: number) => {
+			try {
+				if (!user_id) {
+					return;
+				}
+
+				if (!currentWorkspace) {
+					return;
+				}
+
+				await post(
+					`/requests/${req.id}/read?workspace_id=${currentWorkspace.id}`,
+					{ user_id }
+				);
+				setRequests((prev) => {
+					return prev.map((re) => {
+						if (re.id === req.id) {
+							return {
+								...re,
+								user_reads: [...re.user_reads, user_id],
+							};
+						}
+						return re;
+					});
+				});
+			} catch (error) {
+				logAction("Error marking request as read:", error);
+			}
+		},
+		[req, setRequests, currentWorkspace]
+	);
+
+	const onPointerDown = useCallback(
+		async (e: React.PointerEvent) => {
+			if (
+				(actionElementRef.current &&
+					actionElementRef.current.contains(e.target as Node)) ||
+				!user
+			) {
+				return;
+			}
+
+			await handleMarkAsRead(user.id || 0);
+		},
+		[handleMarkAsRead, user]
+	);
+
+	const renderDate = useCallback(() => {
+		const buttonProps = {
+			variant: "ghost" as VariantProps<typeof Button>["variant"],
+			className: "size-5 rounded-xs text-neutral-500 dark:text-neutral-300 p-0",
+		};
+
+		const action = (
+			<div className="flex flex-col gap-1">
+				{req.type_action === "receive" ? (
+					<Button className="size-6 p-0 rounded-sm" variant={"outline"}>
+						<Check />
+					</Button>
+				) : null}
+				{req.type_action === "send" ? (
+					//cancel sent request
+					<Button
+						className="size-6 opacity-80 p-0 rounded-sm"
+						variant={"destructive"}
+					>
+						<X />
+					</Button>
+				) : (
+					<Button
+						className="size-6 opacity-80 p-0 rounded-sm"
+						variant={"destructive"}
+					>
+						<X />
+					</Button>
+				)}
+			</div>
+		);
+
+		if (!user) {
+			return (
+				<span className="text-xs text-neutral-400 dark:text-neutral-200">
+					Oct
+				</span>
+			);
+		}
+
+		if (!currentWorkspace) {
+			return null;
+		}
+
+		return (
+			<div className="min-w-22 text-center">
+				{req.status === "pending" &&
+				req.request_type === "request" &&
+				req.receiver_id === user.id ? (
+					action
+				) : (
+					<div className="relative">
+						<div className="flex items-center gap-2 justify-end group-hover/item-inbox:opacity-0 opacity-100">
+							<span className="text-xs text-neutral-400 dark:text-neutral-200">
+								Oct
+							</span>
+							{!req.user_reads.includes(user.id) && (
+								<div className="bg-blue-500 rounded-full size-1.5" />
+							)}
+						</div>
+						<div
+							ref={actionElementRef}
+							className="absolute top-1/2 transform -translate-y-1/2 right-0 group-hover/item-inbox:opacity-100 opacity-0 transition-opacity flex items-center gap-1 border p-1 rounded-sm bg-white shadow-md group-hover/item-inbox:pointer-events-auto pointer-events-none"
+						>
+							<Button {...buttonProps} onClick={handleChangeNotification}>
+								<Bell />
+							</Button>
+							<Button
+								{...buttonProps}
+								onClick={() => handleMarkAsRead(user.id || 0)}
+							>
+								<BookmarkCheck />
+							</Button>
+							{currentWorkspace?.role === "admin" ? (
+								<>
+									<Button {...buttonProps} onClick={handleArchiveRequest}>
+										<Archive />
+									</Button>
+									<Button {...buttonProps} onClick={handleRemoveRequest}>
+										<Trash />
+									</Button>
+								</>
+							) : null}
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	}, [
+		handleArchiveRequest,
+		handleChangeNotification,
+		handleMarkAsRead,
+		handleRemoveRequest,
+		req.status,
+		req.request_type,
+		req.user_reads,
+		req.type_action,
+		user,
+		req.receiver_id,
+		currentWorkspace,
+	]);
+
+	const content = (
+		<>
+			<div className="flex items-center justify-between w-full gap-2">
+				<div className="flex items-center gap-2">
+					<Avatar className="bg-neutral-300">
+						<AvatarImage src={""} />
+						<AvatarFallback>
+							<span className="text-xs">U</span>
+						</AvatarFallback>
+					</Avatar>
+					<div>
+						{renderTitle(req)}
+						<p className="text-ellipsis line-clamp-1 text-neutral-400 mt-1 text-xs">
+							{req.message}
+						</p>
+					</div>
+				</div>
+				{renderDate()}
+			</div>
+		</>
+	);
+
+	return req.ref_link ? (
+		<Link
+			href={req.ref_link}
+			className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground whitespace-nowrap min-h-20 relative flex items-center gap-2 p-4 text-sm leading-tight border-b group/item-inbox"
+			onPointerDown={onPointerDown}
+		>
+			{content}
+		</Link>
+	) : (
+		<div className="whitespace-nowrap min-h-20 flex items-center p-4 text-sm leading-tight border-b relative group/item-inbox">
+			{content}
+		</div>
+	);
 };
 
 const SidebarInbox = ({
-  open,
-  ref,
+	open,
+	ref,
 }: {
-  open: boolean;
-  ref: React.RefObject<HTMLDivElement | null>;
+	open: boolean;
+	ref: React.RefObject<HTMLDivElement | null>;
 }) => {
-  const { currentWorkspace } = useWorkspace();
-  const { requests, setRequests } = useRequest();
-  const {
-    state: { user },
-  } = useAuth();
+	const { currentWorkspace } = useWorkspace();
+	const { requests, setRequests } = useRequest();
+	const {
+		state: { user },
+	} = useAuth();
 
-  useEffect(() => {
-    const fetchData = async (workspace_id: number) => {
-      try {
-        const res = (await get("/requests?workspace_id=" + workspace_id)) as {
-          requests: TRequest[];
-        };
+	useEffect(() => {
+		const fetchData = async (workspace_id: number) => {
+			try {
+				const res = (await get("/requests?workspace_id=" + workspace_id)) as {
+					requests: TRequest[];
+				};
 
-        if (res.requests && Array.isArray(res.requests)) {
-          setRequests(res.requests);
-        }
-      } catch (error) {
-        logAction("Error fetching inbox data:", error);
-      }
-    };
+				if (res.requests && Array.isArray(res.requests)) {
+					setRequests(res.requests);
+				}
+			} catch (error) {
+				logAction("Error fetching inbox data:", error);
+			}
+		};
 
-    if (!currentWorkspace || !currentWorkspace.id || !user) {
-      return;
-    }
-    fetchData(currentWorkspace.id);
-  }, [currentWorkspace, setRequests, user]);
+		if (!currentWorkspace || !currentWorkspace.id || !user) {
+			return;
+		}
+		fetchData(currentWorkspace.id);
+	}, [currentWorkspace, setRequests, user]);
 
-  return (
-    <Sidebar
-      collapsible="none"
-      className={`flex-1 border-r bg-white ${
-        open ? "flex min-w-xs" : "hidden"
-      }`}
-      ref={ref}
-    >
-      <SidebarContent>
-        <SidebarGroup className="px-0">
-          <SidebarGroupLabel className="text-primary text-sm font-medium">
-            Inbox
-          </SidebarGroupLabel>
-          <SidebarGroupContent className="flex flex-col">
-            {requests.length ? (
-              requests.map((req) => <SidebarInboxItem key={req.id} req={req} />)
-            ) : (
-              <div className="py-18 flex flex-col items-center justify-center w-full gap-1 text-center">
-                <Check className="size-8 text-neutral-500" />
-                <p className="text-neutral-500 font-semibold">
-                  You&apos;ve all caught up!
-                </p>
-                <p className="text-ellipsis line-clamp-1 text-neutral-400 text-xs">
-                  No new requests
-                </p>
-              </div>
-            )}
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
+	return (
+		<Sidebar
+			collapsible="none"
+			className={`flex-1 border-r bg-white ${
+				open ? "flex min-w-sm" : "hidden"
+			}`}
+			ref={ref}
+		>
+			<SidebarContent>
+				<SidebarGroup className="px-0">
+					<SidebarGroupLabel className="text-primary text-sm font-medium">
+						Inbox
+					</SidebarGroupLabel>
+					<SidebarGroupContent className="flex flex-col">
+						{requests.length ? (
+							requests.map((req) => <SidebarInboxItem key={req.id} req={req} />)
+						) : (
+							<div className="py-18 flex flex-col items-center justify-center w-full gap-1 text-center">
+								<Check className="size-8 text-neutral-500" />
+								<p className="text-neutral-500 font-semibold">
+									You&apos;ve all caught up!
+								</p>
+								<p className="text-ellipsis line-clamp-1 text-neutral-400 text-xs">
+									No new requests
+								</p>
+							</div>
+						)}
+					</SidebarGroupContent>
+				</SidebarGroup>
+			</SidebarContent>
+		</Sidebar>
+	);
 };
 
 const AppSidebarClient = () => {
-  const { currentNote } = useNote();
+	const { currentNote } = useNote();
 
-  const [openMenuInbox, setOpenMenuInbox] = useState(false);
+	const [openMenuInbox, setOpenMenuInbox] = useState(false);
 
-  const sidebarRef = React.useRef<HTMLDivElement>(null);
-  const sidebarInboxRef = React.useRef<HTMLDivElement>(null);
-  const btnMenuInboxRef = React.useRef<HTMLButtonElement>(null);
+	const sidebarRef = React.useRef<HTMLDivElement>(null);
+	const sidebarInboxRef = React.useRef<HTMLDivElement>(null);
+	const btnMenuInboxRef = React.useRef<HTMLButtonElement>(null);
 
-  const pathname = usePathname();
+	const pathname = usePathname();
 
-  useEffect(() => {
-    const sidebar = sidebarRef.current;
-    const sidebarInbox = sidebarInboxRef.current;
-    const btnMenuInbox = btnMenuInboxRef.current;
+	useEffect(() => {
+		const sidebar = sidebarRef.current;
+		const sidebarInbox = sidebarInboxRef.current;
+		const btnMenuInbox = btnMenuInboxRef.current;
 
-    if (!sidebar || !openMenuInbox || !btnMenuInbox || !sidebarInbox) {
-      return;
-    }
+		if (!sidebar || !openMenuInbox || !btnMenuInbox || !sidebarInbox) {
+			return;
+		}
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        !sidebarInbox.contains(event.target as Node) &&
-        !btnMenuInbox.contains(event.target as Node)
-      ) {
-        setOpenMenuInbox(false);
-      }
-    };
+		const handleClickOutside = (event: MouseEvent) => {
+			if (
+				!sidebarInbox.contains(event.target as Node) &&
+				!btnMenuInbox.contains(event.target as Node)
+			) {
+				setOpenMenuInbox(false);
+			}
+		};
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [openMenuInbox]);
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [openMenuInbox]);
 
-  if (!currentNote && !(pathname === "/home")) {
-    return <>Loading</>;
-  }
+	if (!currentNote && !(pathname === "/home")) {
+		return <>Loading</>;
+	}
 
-  return (
-    <>
-      <Sidebar
-        collapsible="none"
-        className={`${
-          openMenuInbox ? "border-r" : ""
-        } min-w-[255px] not-outside group/sidebar`}
-        ref={sidebarRef}
-      >
-        <SidebarHeader>
-          <AppSidebarHeader
-            openMenuInbox={openMenuInbox}
-            setOpenMenuInbox={setOpenMenuInbox}
-            btnMenuInboxRef={btnMenuInboxRef}
-          />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarNavMainContainer />
-          <SidebarNavSetting />
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInbox open={openMenuInbox} ref={sidebarInboxRef} />
-    </>
-  );
+	return (
+		<>
+			<Sidebar
+				collapsible="none"
+				className={`${
+					openMenuInbox ? "border-r" : ""
+				} min-w-[255px] not-outside group/sidebar`}
+				ref={sidebarRef}
+			>
+				<SidebarHeader>
+					<AppSidebarHeader
+						openMenuInbox={openMenuInbox}
+						setOpenMenuInbox={setOpenMenuInbox}
+						btnMenuInboxRef={btnMenuInboxRef}
+					/>
+				</SidebarHeader>
+				<SidebarContent>
+					<SidebarNavMainContainer />
+					<SidebarNavSetting />
+				</SidebarContent>
+			</Sidebar>
+			<SidebarInbox open={openMenuInbox} ref={sidebarInboxRef} />
+		</>
+	);
 };
 
 export default AppSidebarClient;

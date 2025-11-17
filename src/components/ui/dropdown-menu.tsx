@@ -5,11 +5,27 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useModalContext } from "@/contexts/modal-context";
 
 function DropdownMenu({
+	onOpenChange,
+	modal = true,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+	const { setState } = useModalContext();
+
+	return (
+		<DropdownMenuPrimitive.Root
+			data-slot="dropdown-menu"
+			onOpenChange={(open) => {
+				if (modal) {
+					setState((prev) => ({ ...prev, openAnyModal: open }));
+				}
+				onOpenChange?.(open);
+			}}
+			{...props}
+		/>
+	);
 }
 
 function DropdownMenuPortal({

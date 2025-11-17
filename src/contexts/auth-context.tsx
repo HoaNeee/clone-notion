@@ -1,7 +1,7 @@
 "use client";
 
 import { sleep } from "@/lib/utils";
-import { get, post } from "@/utils/request";
+import { get, patch, post } from "@/utils/request";
 import { useRouter } from "next/navigation";
 import {
 	createContext,
@@ -238,9 +238,7 @@ const AuthContext = ({
 		async (payload: Partial<TUser>) => {
 			if (state.user && payload !== state.user) {
 				try {
-					// const res = await post("/auth/update-user", { ...state.user, ...payload });
-
-					console.log(payload);
+					await patch("/auth/update-profile", { ...payload });
 
 					dispatch({
 						type: "UPDATE_USER",
