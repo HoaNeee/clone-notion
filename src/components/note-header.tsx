@@ -12,15 +12,16 @@ import React, {
 import { useSidebar } from "./ui/sidebar";
 import {
   ArrowUpLeft,
-  Check,
   ChevronDown,
   ChevronLeft,
+  CornerUpLeft,
   Earth,
   LockKeyhole,
   Menu,
   MessageSquareText,
   Search,
   Star,
+  Trash,
   UserRoundPlus,
   X,
 } from "lucide-react";
@@ -43,8 +44,9 @@ import lodash from "lodash";
 import { Textarea } from "./ui/textarea";
 import AlertDialogConfirm from "./alert-dialog-confirm";
 import { useNote } from "@/contexts/note-context";
-import { title } from "process";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useFolderState } from "@/contexts/folder-context";
+import { TFolder } from "@/types/folder.type";
 
 type TEmailInvite = {
   email: string;
@@ -123,10 +125,12 @@ const UserPermissionItem = ({
   user,
   isSelf = false,
   note,
+  disabled = false,
 }: {
   user: TMemberInNote;
   isSelf?: boolean;
   note: TNote;
+  disabled?: boolean;
 }) => {
   const { membersInNote, setMembersInNote } = useNote();
   const { currentWorkspace } = useWorkspace();
@@ -206,7 +210,13 @@ const UserPermissionItem = ({
 
   return (
     <>
-      <div className="hover:bg-neutral-100 flex items-center justify-between w-full px-2 py-1 rounded-md cursor-pointer">
+      <div
+        className={`hover:bg-neutral-100 flex items-center justify-between w-full px-2 py-1 rounded-md cursor-pointer`}
+        style={{
+          pointerEvents: disabled ? "none" : "auto",
+          opacity: disabled ? 0.9 : 1,
+        }}
+      >
         <div className="flex items-center gap-2">
           <Avatar className="size-9">
             <AvatarImage src={user.avatar || ""} />
@@ -295,11 +305,13 @@ const SelectorGeneralAccess = ({
   onOpenChange,
   note,
   members,
+  disabled,
 }: {
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
   note: TNote;
   members: TMemberInNote[];
+  disabled?: boolean;
 }) => {
   const [status, setStatus] = useState<TNote["status"]>(
     note.status || "private"
@@ -389,6 +401,10 @@ const SelectorGeneralAccess = ({
   return (
     <div
       className="hover:bg-neutral-100 flex items-center justify-between w-full px-2 py-1 rounded-md cursor-pointer"
+      style={{
+        pointerEvents: disabled ? "none" : "auto",
+        opacity: disabled ? 0.6 : 1,
+      }}
       onClick={(e) => {
         const actionElem = actionRef.current;
         const contentElem = contentRef.current;
@@ -961,6 +977,7 @@ const InputSearchMember = ({
   onValueChange,
   inputRef,
   isTabSearch,
+  disabled,
 }: {
   setIsTabSearch: Dispatch<SetStateAction<boolean>>;
   open: boolean;
@@ -968,6 +985,7 @@ const InputSearchMember = ({
   onValueChange?: (value: string) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   isTabSearch?: boolean;
+  disabled?: boolean;
 }) => {
   const [isFocusedInput, setIsFocusedInput] = useState(false);
 
@@ -1012,7 +1030,7 @@ const InputSearchMember = ({
 
   return (
     <input
-      className="py-1.5 border rounded-sm w-full px-2"
+      className="py-1.5 border rounded-sm w-full px-2 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-70"
       placeholder="Enter email or group"
       ref={inputRef}
       onFocus={() => {
@@ -1032,6 +1050,7 @@ const InputSearchMember = ({
           onValueChange(e.target.value);
         }
       }}
+      disabled={disabled}
     />
   );
 };
@@ -1158,6 +1177,8 @@ const PopoverShareNote = ({ note }: { note: TNote }) => {
     [note, currentWorkspace, setMembersInNote, membersInNote]
   );
 
+  const disabled = !!note.deleted;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -1198,6 +1219,7 @@ const PopoverShareNote = ({ note }: { note: TNote }) => {
                 onValueChange={setSearchValue}
                 inputRef={inputRef}
                 isTabSearch={isTabSearch}
+                disabled={disabled}
               />
               <Button
                 size={"sm"}
@@ -1208,6 +1230,7 @@ const PopoverShareNote = ({ note }: { note: TNote }) => {
                     handleSubmitAllEmails(emails, message);
                   }
                 }}
+                disabled={disabled}
               >
                 Invite
               </Button>
@@ -1233,6 +1256,7 @@ const PopoverShareNote = ({ note }: { note: TNote }) => {
                     user={member}
                     isSelf={!!(user && user.id === member.id)}
                     note={note}
+                    disabled={disabled}
                   />
                 ))}
               </div>
@@ -1245,6 +1269,7 @@ const PopoverShareNote = ({ note }: { note: TNote }) => {
                   onOpenChange={setOpenSelectGeneralAccess}
                   note={note}
                   members={membersInNote}
+                  disabled={disabled}
                 />
               </div>
             </>
@@ -1259,6 +1284,26 @@ const NoteHeaderAction = ({ note }: { note: TNote }) => {
   const {
     state: { user },
   } = useAuth();
+
+  const { onFavoriteNote, noteFavorites, currentNote } = useNote();
+  const { currentWorkspace } = useWorkspace();
+
+  const handleFavorite = useCallback(() => {
+    if (!user || !currentNote || !currentWorkspace) {
+      return;
+    }
+
+    if (noteFavorites.find((fav) => fav.id === currentNote.id)) {
+      onFavoriteNote(currentNote, currentWorkspace.id, "remove");
+    } else {
+      onFavoriteNote(currentNote, currentWorkspace.id, "add");
+    }
+  }, [noteFavorites, onFavoriteNote, user, currentNote, currentWorkspace]);
+
+  const include = useMemo(() => {
+    return currentNote && noteFavorites.find((no) => no.id === currentNote.id);
+  }, [noteFavorites, currentNote]);
+
   return (
     <div className="flex items-center gap-0">
       <Button
@@ -1274,13 +1319,27 @@ const NoteHeaderAction = ({ note }: { note: TNote }) => {
       <Button variant={"ghost"} size={"sm"} className="h-7 text-sm font-normal">
         <MessageSquareText />
       </Button>
-      {!user ? null : (
+      {!user || note.deleted ? null : (
         <Button
           variant={"ghost"}
           size={"sm"}
-          className="h-7 text-sm font-normal"
+          className="h-7 text-sm font-normal relative"
+          onClick={handleFavorite}
         >
-          <Star />
+          <Star
+            fill="#F6C050"
+            stroke="#F6C050"
+            className="transition-opacity"
+            style={{
+              opacity: include ? 1 : 0,
+            }}
+          />
+          <Star
+            className="transition-opacity absolute"
+            style={{
+              opacity: include ? 0 : 1,
+            }}
+          />
         </Button>
       )}
     </div>
@@ -1289,25 +1348,115 @@ const NoteHeaderAction = ({ note }: { note: TNote }) => {
 
 const NoteHeader = ({ note }: { note: TNote }) => {
   const { open, toggleSidebar } = useSidebar();
+  const { setData, data } = useFolderState();
+  const { currentWorkspace } = useWorkspace();
+  const { setCurrentNote } = useNote();
+
+  const [openDialogConfirmDeleteNote, setOpenDialogConfirmDeleteNote] =
+    useState(false);
+
+  const handleRestore = useCallback(
+    async (id: number, type: TFolder["type"]) => {
+      if (!currentWorkspace || !note) {
+        return;
+      }
+      try {
+        const res = (await patch(
+          `/trash/${type}/restore/${id}?workspace_id=${currentWorkspace.id}`
+        )) as TFolder | TNote;
+
+        setData([...data, res]);
+        setCurrentNote({
+          ...note,
+          deleted: 0,
+        });
+      } catch (error) {
+        logAction("Error restoring note from trash: ", error);
+      }
+    },
+    [currentWorkspace, setData, data, note, setCurrentNote]
+  );
+
+  const handleDelete = useCallback(
+    async (id: number, type: TFolder["type"]) => {
+      if (!currentWorkspace) {
+        return;
+      }
+      try {
+        await patch(
+          `/trash/${type}/delete/${id}?workspace_id=${currentWorkspace.id}`
+        );
+      } catch (error) {
+        logAction("Error deleting note from trash: ", error);
+      }
+    },
+    [currentWorkspace]
+  );
 
   return (
-    <header className="min-h-8 sticky top-0 left-0 z-20 flex items-center justify-between w-full px-4 py-3 text-sm bg-white">
-      <div className="flex items-center gap-2">
-        {!open && (
-          <Button size={"sm"} variant={"ghost"} onClick={toggleSidebar}>
-            <Menu className="text-neutral-500" />
-          </Button>
-        )}
-        <p>{note?.title || "New File"}</p>
-        {note.status === "private" && (
-          <div className="text-neutral-500 hover:bg-neutral-100 flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer">
-            <LockKeyhole size={12} />
-            <span className="">Private</span>
+    <>
+      <header className="min-h-8 sticky top-0 left-0 z-20 flex flex-col w-full py-1 text-sm bg-white">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            {!open && (
+              <Button size={"sm"} variant={"ghost"} onClick={toggleSidebar}>
+                <Menu className="text-neutral-500" />
+              </Button>
+            )}
+            <p>{note?.title || "New File"}</p>
+            {note.status === "private" && (
+              <div className="text-neutral-500 hover:bg-neutral-100 flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer">
+                <LockKeyhole size={12} />
+                <span className="">Private</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <NoteHeaderAction note={note} />
-    </header>
+          <NoteHeaderAction note={note} />
+        </div>
+        {note.deleted ? (
+          <div className="bg-destructive/70 flex items-center justify-center gap-2 px-4 py-2 text-white">
+            <p>Hoa nguyen moved this file to Trash just now.</p>
+            <div className="flex items-center gap-2">
+              <Button
+                className="h-7 hover:bg-destructive/50 font-normal bg-transparent border border-white"
+                onClick={() => {
+                  handleRestore(note.id, "note");
+                }}
+              >
+                <CornerUpLeft />
+                Restore file
+              </Button>
+              <Button
+                className="h-7 hover:bg-destructive/50 font-normal bg-transparent border border-white"
+                onClick={() => {
+                  setOpenDialogConfirmDeleteNote(true);
+                }}
+              >
+                <Trash />
+                Delete from Trash
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </header>
+      <AlertDialogConfirm
+        open={openDialogConfirmDeleteNote}
+        setOpen={setOpenDialogConfirmDeleteNote}
+        dialogType="column"
+        icon={Trash}
+        description="Are you sure you want to delete this note? This action will remove data from our server."
+        title="Are you sure?"
+        okButton={
+          <Button
+            variant={"destructive"}
+            className="opacity-80"
+            onClick={() => handleDelete(note.id, "note")}
+          >
+            Continue
+          </Button>
+        }
+      />
+    </>
   );
 };
 
