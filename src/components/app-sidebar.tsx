@@ -5,13 +5,15 @@ import { Sidebar } from "./ui/sidebar";
 
 const AppSidebar = () => {
 	return (
-		<Sidebar
-			side="left"
-			collapsible="offcanvas"
-			className="flex-row *:data-[sidebar=sidebar]:flex-row z-21"
-		>
-			<AppSidebarClient />
-		</Sidebar>
+		<>
+			<Sidebar
+				side="left"
+				collapsible="offcanvas"
+				className="flex-row *:data-[sidebar=sidebar]:flex-row z-21"
+			>
+				<AppSidebarClient />
+			</Sidebar>
+		</>
 	);
 };
 

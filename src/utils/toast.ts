@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { logAction } from "@/lib/utils";
 
 export const myToast = ({
@@ -5,9 +6,9 @@ export const myToast = ({
 	description,
 }: {
 	title: string;
-	description: string;
+	description: string | any;
 }) => {
 	//handle toast here (later)
 
-	return logAction(`[Toast] ${title} - ${description}`);
+	return logAction(`TOAST: ${title}`, description);
 };
