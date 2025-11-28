@@ -15,6 +15,13 @@ import {
 } from "react";
 import { useWorkspace } from "./workspace-context";
 
+enum ErrorNoteEnum {
+  NO_PERMISSION = "NO_PERMISSION",
+  NOT_FOUND = "NOT_FOUND",
+  UNKNOWN = "UNKNOWN",
+  NONE = "NONE",
+}
+
 type NoteContextType = {
   currentNote: TNote | null;
   setCurrentNote: Dispatch<TNote | null>;
@@ -29,6 +36,8 @@ type NoteContextType = {
     workspace_id: number,
     action: "add" | "remove"
   ) => void | Promise<void>;
+  errorNote: ErrorNoteEnum;
+  setErrorNote: Dispatch<SetStateAction<ErrorNoteEnum>>;
 };
 
 const Context = createContext<NoteContextType | null>(null);
@@ -40,6 +49,7 @@ const NoteContext = ({ children }: { children: ReactNode }) => {
   >([]);
   const [membersInNote, setMembersInNote] = useState<TMemberInNote[]>([]);
   const [noteFavorites, setNoteFavorites] = useState<TNote[]>([]);
+  const [errorNote, setErrorNote] = useState<ErrorNoteEnum>(ErrorNoteEnum.NONE);
 
   const { currentWorkspace, isGuestInWorkspace } = useWorkspace();
 
@@ -94,6 +104,8 @@ const NoteContext = ({ children }: { children: ReactNode }) => {
     noteFavorites,
     setNoteFavorites,
     onFavoriteNote,
+    errorNote,
+    setErrorNote,
   };
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
@@ -107,4 +119,4 @@ const useNote = () => {
   return context;
 };
 
-export { NoteContext, useNote };
+export { NoteContext, useNote, ErrorNoteEnum };

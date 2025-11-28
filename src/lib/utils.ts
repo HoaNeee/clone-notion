@@ -17,7 +17,7 @@ export const logAction = (...args: unknown[]) => {
   }
 };
 
-export const getValueInLocalStorage = (key: string): string | null => {
+export const getValueInLocalStorage = (key: string) => {
   if (typeof window === "undefined") return null;
 
   const value = localStorage.getItem(key);

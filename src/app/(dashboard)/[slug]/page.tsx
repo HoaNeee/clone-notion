@@ -6,11 +6,9 @@ import { cookies } from "next/headers";
 import AuthDialog from "@/components/auth-dialog";
 import { handleError } from "@/utils/error-handler";
 import MyEditor from "@/editor/my-editor";
-import { TNote } from "@/types/note.type";
-import { TWorkspace } from "@/types/workspace.type";
-import { TFolder } from "@/types/folder.type";
 import { logAction } from "@/lib/utils";
 import DetailNotePageContainer from "@/components/detail-note-page-container";
+import { ApiNoteDetailResponse } from "@/types/response";
 
 const getNoteDetail = async (slug: string, token?: string) => {
   try {
@@ -18,22 +16,19 @@ const getNoteDetail = async (slug: string, token?: string) => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      next: {
+        revalidate: 60, // Revalidate every 60 seconds
+      },
     });
-    return res as {
-      note: TNote;
-      folder: {
-        folder: TFolder;
-        foldersBreadcrumb: TFolder[];
-      };
-      workspace: TWorkspace;
-    };
+    // console.log({ res });
+    return res as ApiNoteDetailResponse;
   } catch (error) {
     logAction("Error fetching note detail:", error);
     const err = handleError(error);
     if (err.isNotFound) {
       return notFound();
     }
-    return error as Error;
+    return new Error(err.message || "Unknown error occurred");
   }
 };
 
@@ -45,14 +40,13 @@ const NoteDetail = async ({
   const slug = (await params).slug;
   const token = (await cookies()).get("note_jwt_token")?.value;
 
-  const res = await getNoteDetail(slug, token);
-
   if (!token) {
+    const res = await getNoteDetail(slug, token);
     if (res instanceof Error) {
       return <>Error: {res.message}</>;
     }
 
-    if (!res || !res.note || (res && res.note.status !== "public")) {
+    if (res.is_need_login) {
       return <AuthDialog />;
     }
 
