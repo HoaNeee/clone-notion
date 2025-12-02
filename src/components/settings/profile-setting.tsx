@@ -36,8 +36,6 @@ const DialogConfirmChangeEmail = ({
 	open: boolean;
 	setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-	const { updateUser } = useAuth();
-
 	const [step, setStep] = useState<StepState>(initialStepState);
 	const [error, setError] = useState<{
 		step: keyof StepState;
@@ -367,8 +365,11 @@ const ProfileSettings = () => {
 					const url = URL.createObjectURL(file);
 					setAvatarTemp(url);
 					await sleep(5000);
-					const res = (await postImage("image", file)) as string;
-					updateUser({ avatar: res });
+					const res = (await postImage("image", file)) as {
+						url: string;
+						public_id: string;
+					};
+					updateUser({ avatar: res.url, avatar_id: res.public_id });
 				} catch (error) {
 					logAction("Error uploading avatar:", error);
 					myToast({

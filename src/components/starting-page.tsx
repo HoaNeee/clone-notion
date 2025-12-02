@@ -1,79 +1,68 @@
 "use client";
 
 import { logAction, sleep } from "@/lib/utils";
-import { get, post } from "@/utils/request";
+import { post } from "@/utils/request";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { Spinner } from "./ui/spinner";
 import { TNote } from "@/types/note.type";
 import { DialogLoading } from "./loading";
+import { TWorkspace } from "@/types/workspace.type";
 
-const StartingPage = () => {
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isPreparing, setIsPreparing] = React.useState(false);
-  const [isNewUser, setIsNewUser] = React.useState(false);
+const StartingPage = ({ is_new_user }: { is_new_user: boolean }) => {
+	const [loaded, setLoaded] = React.useState(false);
+	const [isPreparing, setIsPreparing] = React.useState(false);
 
-  const router = useRouter();
+	const router = useRouter();
 
-  useEffect(() => {
-    const getData = async () => {
-      setIsLoading(true);
-      try {
-        //simulate delay
-        await sleep(2000);
+	useEffect(() => {
+		setLoaded(true);
+	}, []);
 
-        const res = await get("/folders/root");
-        if (!res) {
-          setIsNewUser(true);
-        }
-      } catch (error) {
-        logAction("No root folder found, creating for new user: ", error);
-        setIsNewUser(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+	useEffect(() => {
+		const prepareApp = async () => {
+			setIsPreparing(true);
+			try {
+				//simulate delay
+				await sleep(2000);
 
-    getData();
-  }, [router]);
+				const ws = (await post("/workspaces/create-default")) as TWorkspace;
 
-  useEffect(() => {
-    const prepareApp = async () => {
-      setIsPreparing(true);
-      try {
-        //simulate delay
-        await sleep(2000);
+				if (ws && ws.id) {
+					await sleep(2000);
+					const res = await post(
+						`/folders/create-root-and-default-note?workspace_id=${ws.id}`
+					);
+					const { note } = res as { note: TNote };
+					router.replace(`/${note.slug}`);
+				}
+			} catch (error) {
+				logAction("Error preparing app for new user: ", error);
+			} finally {
+				setIsPreparing(false);
+			}
+		};
+		if (is_new_user && loaded) {
+			prepareApp();
+		}
+	}, [is_new_user, router, loaded]);
 
-        const res = await post("/folders/create-root-and-default-note");
-        const { note } = res as { note: TNote };
-        router.replace(`/${note.slug}`);
-        setIsNewUser(false);
-      } catch (error) {
-        logAction("Error preparing app for new user: ", error);
-      } finally {
-        setIsPreparing(false);
-      }
-    };
-    if (isNewUser && !isPreparing && !isLoading) {
-      prepareApp();
-    }
-  }, [isNewUser, router, isPreparing, isLoading]);
+	const renderLoading = () => {
+		if (!loaded) {
+			return <Spinner className="size-8 text-neutral-500" />;
+		}
 
-  const renderLoading = () => {
-    if (isLoading) {
-      return <Spinner className="size-8 text-neutral-500" />;
-    }
+		if (isPreparing) {
+			return <DialogLoading title="Preparing for you..." />;
+		}
+		return null;
+	};
 
-    if (isPreparing) {
-      return <DialogLoading title="Preparing for you..." />;
-    }
-  };
-
-  return (
-    <div className="flex flex-col justify-center items-center w-full h-screen">
-      {renderLoading()}
-    </div>
-  );
+	return (
+		<div className="flex flex-col justify-center items-center w-full h-screen">
+			{renderLoading()}
+		</div>
+	);
 };
 
 export default StartingPage;

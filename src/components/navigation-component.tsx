@@ -1,8 +1,7 @@
 "use client";
 
-import { getValueInLocalStorage, logAction } from "@/lib/utils";
+import { logAction } from "@/lib/utils";
 import { TNote } from "@/types/note.type";
-import { TWorkspace } from "@/types/workspace.type";
 import { get } from "@/utils/request";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -12,18 +11,16 @@ const NavigationComponent = ({ token }: { token: string }) => {
 
 	const router = useRouter();
 
-	const getDefaultNote = useCallback(async (workspace_id: number | null) => {
+	const getDefaultNote = useCallback(async () => {
 		try {
-			const res = (await get(
-				`/notes/default${workspace_id ? `?workspace_id=${workspace_id}` : ""}`
-			)) as {
-				note: TNote | null;
-				workspace: TWorkspace | null;
+			const res = (await get(`/notes/last-note`)) as {
+				last_note: TNote | null;
 			};
 
-			if (res && res.note) {
-				return res.note as TNote;
+			if (res.last_note) {
+				return res.last_note;
 			}
+
 			return null;
 		} catch (error) {
 			logAction(error);
@@ -36,11 +33,8 @@ const NavigationComponent = ({ token }: { token: string }) => {
 			return;
 		}
 
-		const workspace_id = getValueInLocalStorage("last_workspace_id");
 		const fetchData = async () => {
-			const defaultNote = await getDefaultNote(
-				workspace_id ? parseInt(workspace_id) : null
-			);
+			const defaultNote = await getDefaultNote();
 			if (defaultNote) {
 				router.push(`/${defaultNote.slug}`);
 			} else {
@@ -57,7 +51,8 @@ const NavigationComponent = ({ token }: { token: string }) => {
 	if (isNotDefined) {
 		return (
 			<>
-				Note not found, maybe create a new one, or redirect to onboarding route
+				You dont have any notes, maybe create a new one, or redirect to
+				onboarding route
 			</>
 		);
 	}

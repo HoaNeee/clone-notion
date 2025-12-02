@@ -11,7 +11,6 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
-	useRef,
 	useState,
 } from "react";
 import { useWorkspace } from "./workspace-context";
@@ -366,16 +365,16 @@ const FolderContext = ({
 					if (type === "folder") {
 						const folderUpdate = payload as Partial<TFolder>;
 						dispatchData((prev) => {
-							return prev.map((it) => {
-								if (it.type === "folder" && it.id === id) {
-									it = it as TFolder;
-									if (folderUpdate.parent_id !== it.parent_id) {
-										setItemWorking(it);
+							return prev.map((f) => {
+								if (f.type === "folder" && f.id === id) {
+									f = f as TFolder;
+									if (folderUpdate.parent_id !== f.parent_id) {
+										setItemWorking(f);
 									}
-									return { ...it, ...folderUpdate };
+									return { ...f, ...folderUpdate };
 								}
 
-								return it;
+								return f;
 							});
 						});
 					}
@@ -420,7 +419,37 @@ const FolderContext = ({
 					const folderUpdate = newPayload as TFolder;
 
 					if (isUpdateData) {
-						if (is_in_teamspace) {
+						const is_change_folder_and_is_in_teamspace =
+							folderUpdate.is_in_teamspace !== undefined;
+						if (is_change_folder_and_is_in_teamspace) {
+							if (is_in_teamspace) {
+								// move private -> teamspace
+								const current_folder = data.find(
+									(f) => f.type === "folder" && f.id === id
+								) as TFolder;
+								if (current_folder) {
+									setData((prev) => prev.filter((f) => f.id !== id));
+									setDataInTeamspace((prev) => [
+										...prev,
+										{ ...current_folder, ...folderUpdate },
+									]);
+									setItemWorking(current_folder);
+								}
+							} else {
+								// move teamspace -> private
+								const current_folder = dataInTeamspace.find(
+									(f) => f.type === "folder" && f.id === id
+								) as TFolder;
+								if (current_folder) {
+									setDataInTeamspace((prev) => prev.filter((f) => f.id !== id));
+									setData((prev) => [
+										...prev,
+										{ ...current_folder, ...folderUpdate },
+									]);
+									setItemWorking(current_folder);
+								}
+							}
+						} else if (is_in_teamspace) {
 							setDataHelper(
 								setDataInTeamspace,
 								type,
@@ -435,61 +464,100 @@ const FolderContext = ({
 				}
 
 				if (type === "note") {
-					const newPayload = { ...payload } as Partial<TNote>;
-					delete newPayload.createdAt;
-					delete newPayload.updatedAt;
-					delete newPayload.id;
+					const noteUpdate = { ...payload } as Partial<TNote>;
+					delete noteUpdate.createdAt;
+					delete noteUpdate.updatedAt;
+					delete noteUpdate.id;
 
-					const res = (await patch(`/notes/update/${id}`, newPayload)) as TNote;
+					const res = (await patch(`/notes/update/${id}`, noteUpdate)) as TNote;
 
 					let newSlug = null;
-
+					const is_change_folder_and_is_in_teamspace =
+						noteUpdate.is_in_teamspace !== undefined;
 					if (isUpdateData) {
-						if (is_in_teamspace) {
-							setDataHelper(
-								setDataInTeamspace,
-								type,
-								newPayload,
-								(val: string) => {
-									newSlug = val;
-								},
-								res
-							);
+						if (is_change_folder_and_is_in_teamspace) {
+							if (is_in_teamspace) {
+								// move private -> teamspace
+								const current_note = data.find(
+									(f) => f.type === "note" && f.id === id
+								) as TNote;
+								if (current_note) {
+									setData((prev) => prev.filter((n) => n.id !== id));
+									setDataInTeamspace((prev) => [
+										...prev,
+										{ ...current_note, ...noteUpdate },
+									]);
+									setItemWorking(current_note);
+								}
+							} else {
+								// move teamspace -> private
+								const current_note = dataInTeamspace.find(
+									(f) => f.type === "note" && f.id === id
+								) as TNote;
+								if (current_note) {
+									setDataInTeamspace((prev) => prev.filter((n) => n.id !== id));
+									setData((prev) => [
+										...prev,
+										{ ...current_note, ...noteUpdate },
+									]);
+									setItemWorking(current_note);
+								}
+							}
 						} else {
-							setDataHelper(
-								setData,
-								type,
-								newPayload,
-								(val: string) => {
-									newSlug = val;
-								},
-								res
-							);
+							if (is_in_teamspace) {
+								setDataHelper(
+									setDataInTeamspace,
+									type,
+									noteUpdate,
+									(val: string) => {
+										newSlug = val;
+									},
+									res
+									// {
+									// 	...(noteUpdate as TNote),
+									// }
+								);
+							} else {
+								setDataHelper(
+									setData,
+									type,
+									noteUpdate,
+									(val: string) => {
+										newSlug = val;
+									},
+									res
+									// {
+									// 	...(noteUpdate as TNote),
+									// }
+								);
+							}
 						}
 					}
 
-					let noteUpdating = null;
-					if (is_in_teamspace) {
-						noteUpdating = dataInTeamspace.find(
-							(it) => it.type === "note" && it.id === id
-						) as TNote;
-					} else {
-						noteUpdating = data.find(
-							(it) => it.type === "note" && it.id === id
-						) as TNote;
-					}
+					if (!is_change_folder_and_is_in_teamspace) {
+						let noteUpdating = null;
+						if (is_in_teamspace) {
+							noteUpdating = dataInTeamspace.find(
+								(it) => it.type === "note" && it.id === id
+							) as TNote;
+						} else {
+							noteUpdating = data.find(
+								(it) => it.type === "note" && it.id === id
+							) as TNote;
+						}
 
-					if (!noteUpdating || !currentNote) {
-						return;
-					}
+						if (!noteUpdating || !currentNote) {
+							return;
+						}
 
-					if (
-						newSlug &&
-						newSlug !== slug &&
-						noteUpdating.slug === currentNote.slug &&
-						type === "note"
-					) {
-						router.replace(`/${newSlug}`);
+						if (
+							newSlug &&
+							newSlug !== slug &&
+							noteUpdating.slug === currentNote.slug &&
+							type === "note"
+						) {
+							router.replace(`/${newSlug}`);
+						}
 					}
 				}
 			} catch (error) {
@@ -604,6 +672,7 @@ const FolderContext = ({
 						...payload,
 						...res,
 						type,
+						is_in_teamspace: is_in_teamspace,
 					};
 
 					setItemWorking(newPayload);
@@ -765,7 +834,7 @@ const FolderContextProvider = ({ children }: { children: React.ReactNode }) => {
 				logAction("Error fetching root folders:", error);
 				setRootFolder(null);
 				setRootFolderInTeamspace(null);
-				setIsGuestInWorkspace(true);
+				// setIsGuestInWorkspace(true);
 			}
 		};
 
@@ -774,7 +843,7 @@ const FolderContextProvider = ({ children }: { children: React.ReactNode }) => {
 		} else {
 			setRootFolder(null);
 			setRootFolderInTeamspace(null);
-			setIsGuestInWorkspace(true);
+			// setIsGuestInWorkspace(true);
 		}
 	}, [currentWorkspace, setIsGuestInWorkspace]);
 

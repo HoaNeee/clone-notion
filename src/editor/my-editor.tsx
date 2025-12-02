@@ -15,8 +15,6 @@ import MyOnChangePlugin from "./plugin/my-on-change-plugin";
 import { initialConfig } from "./configs/initial-config";
 import lodash from "lodash";
 import { TNote } from "@/types/note.type";
-import { defaultEditorState } from "@/lib/contants";
-import { sampleData } from "../data/sampleStateData";
 import { patch } from "@/utils/request";
 
 const MyEditor = ({
@@ -24,12 +22,12 @@ const MyEditor = ({
 	note,
 	editable = true,
 }: {
-	editorStateInitial: string;
-	note: TNote;
+	editorStateInitial: string | undefined;
+	note: TNote | null;
 	editable?: boolean;
 }) => {
 	const [editorState, setEditorState] = useState<string>(
-		note.content || editorStateInitial || defaultEditorState
+		editorStateInitial || ""
 	);
 
 	const onUpdate = useCallback(async (id: number, payload: Partial<TNote>) => {
@@ -101,11 +99,15 @@ const MyEditor = ({
 		};
 	}, [debounceSave]);
 
+	if (!note) {
+		return null;
+	}
+
 	return (
 		<LexicalComposer
 			initialConfig={{
 				...initialConfig,
-				editorState: editorState as InitialEditorStateType,
+				editorState: editorStateInitial as InitialEditorStateType,
 			}}
 		>
 			<ToolbarContext>
