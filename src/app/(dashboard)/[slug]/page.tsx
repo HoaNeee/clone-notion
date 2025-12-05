@@ -20,7 +20,6 @@ const getNoteDetail = async (slug: string, token?: string) => {
         revalidate: 60, // Revalidate every 60 seconds
       },
     });
-    // console.log({ res });
     return res as ApiNoteDetailResponse;
   } catch (error) {
     logAction("Error fetching note detail:", error);

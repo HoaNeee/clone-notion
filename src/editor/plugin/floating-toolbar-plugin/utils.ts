@@ -12,7 +12,7 @@ export function setFloatingElemPosition(
   const scrollerElem = anchorElem.parentElement;
 
   if (targetRect === null || !scrollerElem) {
-    floatingElem.style.opacity = "0";
+    // floatingElem.style.opacity = "0";
     floatingElem.style.transform = "translate(-10000px, -10000px)";
     return;
   }
@@ -26,6 +26,7 @@ export function setFloatingElemPosition(
 
   // Check if text is end-aligned
   const selection = window.getSelection();
+
   if (selection && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const textNode = range.startContainer;
@@ -51,11 +52,8 @@ export function setFloatingElemPosition(
       verticalGap * (isLink ? 9 : 2);
   }
 
-  if (left + floatingElemRect.width + 170 > editorScrollerRect.right) {
-    left =
-      editorScrollerRect.right -
-      (floatingElemRect.width + 170) -
-      horizontalOffset;
+  if (left + floatingElemRect.width > editorScrollerRect.right) {
+    left = editorScrollerRect.right - floatingElemRect.width - horizontalOffset;
   }
 
   if (left < editorScrollerRect.left) {
@@ -65,6 +63,6 @@ export function setFloatingElemPosition(
   top -= anchorElementRect.top;
   left -= anchorElementRect.left;
 
-  floatingElem.style.opacity = "1";
+  // floatingElem.style.opacity = "1";
   floatingElem.style.transform = `translate(${left}px, ${top}px)`;
 }
