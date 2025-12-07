@@ -270,10 +270,10 @@ const DropdownAddNew = ({
 	return (
 		<DropdownMenu onOpenChange={setOpenDropdown} open={openDropdown}>
 			<DropdownMenuTrigger>
-				<div className="text-neutral-500 relative">
+				<div className="text-secondary relative">
 					<Plus
 						size={20}
-						className={`hover:bg-gray-200 rounded-sm px-0.5 ${
+						className={`hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-sm px-0.5 ${
 							isCreating ? "opacity-0" : "opacity-100"
 						}`}
 					/>
@@ -286,7 +286,7 @@ const DropdownAddNew = ({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent ref={dropdownContentRef} className="min-w-46">
 				<DropdownMenuGroup>
-					<DropdownMenuLabel className="text-neutral-500 text-xs">
+					<DropdownMenuLabel className="text-secondary text-xs">
 						{getTitle(folder.title, folder.type)}
 					</DropdownMenuLabel>
 					<DropdownMenuItem
@@ -356,13 +356,13 @@ const DropdownFolderNoteAction = ({
 						<div className="relative">
 							<Ellipsis
 								size={20}
-								className="hover:bg-gray-200 rounded-sm px-0.5 "
+								className="hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-sm px-0.5 "
 							/>
 						</div>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent className="min-w-46 not-outside">
 						<DropdownMenuGroup>
-							<DropdownMenuLabel className="text-neutral-500 text-xs">
+							<DropdownMenuLabel className="text-secondary text-xs">
 								{getTitle(item.title, item.type)}
 							</DropdownMenuLabel>
 							<DropdownMenuItem
@@ -426,13 +426,13 @@ const DropdownFolderNoteAction = ({
 					<div className="relative">
 						<Ellipsis
 							size={20}
-							className="hover:bg-gray-200 rounded-sm px-0.5 text-neutral-500"
+							className="hover:bg-gray-200 rounded-sm px-0.5 text-secondary dark:hover:bg-neutral-700"
 						/>
 					</div>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="min-w-46 not-outside">
 					<DropdownMenuGroup>
-						<DropdownMenuLabel className="text-neutral-500 text-xs">
+						<DropdownMenuLabel className="text-secondary text-xs">
 							{getTitle(item.title, item.type)}
 						</DropdownMenuLabel>
 						<DropdownMenuItem
@@ -598,7 +598,10 @@ const NavItemNote = ({ note, role }: { note: TNote; role: TWorkspaceRole }) => {
 
 	const params = useParams();
 	const slug = params.slug as string | undefined;
-	const active = slug && note.type === "note" && slug === (note as TNote).slug;
+	const active =
+		slug &&
+		note.type === "note" &&
+		slug.toLowerCase() === (note as TNote).slug.toLowerCase();
 
 	const [{ isDragging: isDraggingNote }, dragNote] = useDrag(() => ({
 		type: "folder",
@@ -680,9 +683,9 @@ const NavItemNote = ({ note, role }: { note: TNote; role: TWorkspaceRole }) => {
 					}}
 				>
 					<SidebarMenuButton
-						className={`cursor-pointer relative text-neutral-500 hover:text-black/80 transition-colors ${
+						className={`cursor-pointer relative text-secondary hover:text-black/80 dark:hover:text-white transition-colors ${
 							active
-								? "bg-neutral-200/40 hover:bg-neutral-200 text-black/70"
+								? "bg-neutral-200/40 hover:bg-neutral-200 text-black/70 dark:bg-neutral-700/40 dark:hover:bg-neutral-700 dark:text-white"
 								: ""
 						}`}
 					>
@@ -967,7 +970,7 @@ const NavItemFolder = ({
 						data={data}
 						rootFolder={rootFolder}
 					>
-						<SidebarMenuItem className="group/item text-neutral-500">
+						<SidebarMenuItem className="group/item text-secondary">
 							<CollapsibleTrigger asChild>
 								<SidebarMenuButton className="relative cursor-pointer">
 									<div className="relative font-medium">
@@ -976,7 +979,7 @@ const NavItemFolder = ({
 											className="group-hover/item:opacity-0 flex items-center justify-center pointer-events-none"
 										/>
 										<div
-											className={`group-hover/item:opacity-100 opacity-0 group-hover/item:z-999 absolute top-0 left-0 items-center justify-center transition-all hover:bg-gray-200/80 active:bg-gray-300 rounded-sm transform ${
+											className={`group-hover/item:opacity-100 opacity-0 group-hover/item:z-999 absolute top-0 left-0 items-center justify-center transition-all hover:bg-gray-200/80 dark:hover:bg-neutral-700 active:bg-gray-300 dark:active:bg-neutral-800 rounded-sm transform ${
 												openCollapsibleFolder ? "rotate-90" : ""
 											}`}
 										>
@@ -1014,7 +1017,7 @@ const NavItemFolder = ({
 				)}
 
 				<CollapsibleContent>
-					<div className="text-neutral-500 px-2 text-sm">
+					<div className="text-secondary px-2 text-sm">
 						<NavList
 							data={folder.children || []}
 							rootFolder={rootFolder}

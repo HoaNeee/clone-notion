@@ -5,6 +5,7 @@ import { TNote } from "@/types/note.type";
 import { get } from "@/utils/request";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Spinner } from "./ui/spinner";
 
 const NavigationComponent = ({ token }: { token: string }) => {
 	const [isNotDefined, setIsNotDefined] = useState<boolean>(false);
@@ -57,7 +58,11 @@ const NavigationComponent = ({ token }: { token: string }) => {
 		);
 	}
 
-	return <>Loading...</>;
+	return (
+		<div className="w-full min-h-screen flex items-center justify-center">
+			<Spinner className="size-8 text-neutral-500" />
+		</div>
+	);
 };
 
 export default NavigationComponent;

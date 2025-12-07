@@ -14,54 +14,77 @@ import MyPlugin from "./my-plugin";
 import MyOnChangePlugin from "./plugin/my-on-change-plugin";
 import { initialConfig } from "./configs/initial-config";
 import lodash from "lodash";
-import { TNote } from "@/types/note.type";
+import { TNote, TNotePermission } from "@/types/note.type";
 import { patch } from "@/utils/request";
+import { logAction } from "@/lib/utils";
+import { useNote } from "@/contexts/note-context";
+import { useAuth } from "@/contexts/auth-context";
 
 const MyEditor = ({
 	editorStateInitial,
 	note,
 	editable = true,
+	permissionInNote,
 }: {
 	editorStateInitial: string | undefined;
 	note: TNote | null;
 	editable?: boolean;
+	permissionInNote?: TNotePermission;
 }) => {
 	const [editorState, setEditorState] = useState<string>(
 		editorStateInitial || ""
 	);
 
-	const onUpdate = useCallback(async (id: number, payload: Partial<TNote>) => {
-		try {
-			const newPayload = { ...payload } as Partial<TNote>;
-			delete newPayload.createdAt;
-			delete newPayload.updatedAt;
-			delete newPayload.id;
+	const currentNote = useNote().currentNote;
+	const setCurrentNote = useNote().setCurrentNote;
+	const user = useAuth().state.user;
+	const setSavingContent = useNote().setSavingContent;
 
-			const res = await patch(`/notes/update/${id}`, newPayload);
+	const onUpdate = useCallback(
+		async (id: number = 0, content: string) => {
+			try {
+				if (!id) return;
+				console.log("saving...");
+				setSavingContent(true);
 
-			console.log(res);
-		} catch (error) {
-			throw error;
+				await patch(`/notes/update-content/${id}`, { content });
+
+				setCurrentNote((prev) => {
+					if (prev) {
+						return {
+							...prev,
+							content,
+							updatedAt: new Date().toISOString(),
+							last_updated_by: {
+								id: user?.id || 0,
+								fullname: user?.fullname || "Unknown",
+								email: user?.email || "unknown@example.com",
+								avatar: user?.avatar || "",
+							},
+						};
+					}
+					return prev;
+				});
+			} catch (error) {
+				logAction("Error update note content:", error);
+			} finally {
+				setSavingContent(false);
+			}
+		},
+		[setSavingContent, setCurrentNote, user]
+	);
+
+	//set current note when user is guest (not logged in)
+	useEffect(() => {
+		if (note && !currentNote && !user) {
+			setCurrentNote(note);
 		}
-	}, []);
-
-	const handleSave = async (state: string) => {
-		//save data here
-		const payload = {
-			content: state,
-		};
-
-		try {
-			// await onUpdate(note.id, payload);
-		} catch (error) {
-			console.error("Error saving note:", error);
-		}
-	};
+	}, [note, currentNote, setCurrentNote, user]);
 
 	const debounceSave = useRef(
 		lodash.debounce((state) => {
 			console.log("Auto saving...");
-			handleSave(state);
+			onUpdate(note?.id, state);
 		}, 1000)
 	).current;
 
@@ -89,7 +112,7 @@ const MyEditor = ({
 				e.preventDefault();
 
 				console.log("Manually saving...");
-				debounceSave.flush();
+				onUpdate(note?.id, editorState);
 			}
 		};
 
@@ -97,7 +120,7 @@ const MyEditor = ({
 		return () => {
 			window.removeEventListener("keydown", keyboardSave);
 		};
-	}, [debounceSave]);
+	}, [editorState, note?.id, onUpdate]);
 
 	if (!note) {
 		return null;
@@ -113,7 +136,7 @@ const MyEditor = ({
 			<ToolbarContext>
 				<SelectionCustomContext>
 					<FloatingToolbarContext>
-						<MyPlugin editable={editable} />
+						<MyPlugin editable={editable} permissionInNote={permissionInNote} />
 						<MyOnChangePlugin onChange={onChange} />
 					</FloatingToolbarContext>
 				</SelectionCustomContext>

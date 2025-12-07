@@ -8,6 +8,7 @@ import { RequestContext } from "@/contexts/request-context";
 import { ThemeProvider } from "next-themes";
 import { SettingContext } from "@/contexts/setting-context";
 import { ModalContext } from "@/contexts/modal-context";
+import { NoteContext } from "@/contexts/note-context";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -41,7 +42,9 @@ export default async function RootLayout({
 						<AuthContext token={token}>
 							<SettingContext token={token}>
 								<WorkspaceContext token={token}>
-									<RequestContext>{children}</RequestContext>
+									<RequestContext>
+										<NoteContext>{children}</NoteContext>
+									</RequestContext>
 								</WorkspaceContext>
 							</SettingContext>
 						</AuthContext>

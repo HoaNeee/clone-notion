@@ -1,7 +1,7 @@
 "use client";
 
 import { logAction } from "@/lib/utils";
-import { TMemberInNote, TNote } from "@/types/note.type";
+import { TMemberInNote, TNote, TThread } from "@/types/note.type";
 import { get, patch } from "@/utils/request";
 import {
 	createContext,
@@ -24,7 +24,7 @@ enum ErrorNoteEnum {
 
 type NoteContextType = {
 	currentNote: TNote | null;
-	setCurrentNote: Dispatch<TNote | null>;
+	setCurrentNote: Dispatch<SetStateAction<TNote | null>>;
 	differentNotesPublished: TNote[];
 	setDifferentNotesPublished: Dispatch<TNote[]>;
 	membersInNote: TMemberInNote[];
@@ -38,6 +38,12 @@ type NoteContextType = {
 	) => void | Promise<void>;
 	errorNote: ErrorNoteEnum;
 	setErrorNote: Dispatch<SetStateAction<ErrorNoteEnum>>;
+	threadComments: TThread[];
+	setThreadComments: Dispatch<SetStateAction<TThread[]>>;
+	showThreadComments: boolean;
+	setShowThreadComments: Dispatch<SetStateAction<boolean>>;
+	savingContent: boolean;
+	setSavingContent: Dispatch<SetStateAction<boolean>>;
 };
 
 const Context = createContext<NoteContextType | null>(null);
@@ -50,6 +56,10 @@ const NoteContext = ({ children }: { children: ReactNode }) => {
 	const [membersInNote, setMembersInNote] = useState<TMemberInNote[]>([]);
 	const [noteFavorites, setNoteFavorites] = useState<TNote[]>([]);
 	const [errorNote, setErrorNote] = useState<ErrorNoteEnum>(ErrorNoteEnum.NONE);
+
+	const [threadComments, setThreadComments] = useState<TThread[]>([]);
+	const [showThreadComments, setShowThreadComments] = useState<boolean>(false);
+	const [savingContent, setSavingContent] = useState<boolean>(false);
 
 	const { currentWorkspace, isGuestInWorkspace } = useWorkspace();
 
@@ -94,6 +104,13 @@ const NoteContext = ({ children }: { children: ReactNode }) => {
 		}
 	}, [currentWorkspace, getFavoriteNotes, isGuestInWorkspace]);
 
+	//reset thread comments when change note
+	useEffect(() => {
+		return () => {
+			setShowThreadComments(false);
+		};
+	}, [currentNote?.id]);
+
 	const value = {
 		currentNote,
 		setCurrentNote,
@@ -106,6 +123,12 @@ const NoteContext = ({ children }: { children: ReactNode }) => {
 		onFavoriteNote,
 		errorNote,
 		setErrorNote,
+		threadComments,
+		setThreadComments,
+		showThreadComments,
+		setShowThreadComments,
+		savingContent,
+		setSavingContent,
 	};
 
 	return <Context.Provider value={value}>{children}</Context.Provider>;

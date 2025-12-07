@@ -472,7 +472,7 @@ const DropdownMenuAction = (props: DropdownMenuActionProps) => {
 						</DropdownMenuGroup>
 
 						<DropdownMenuGroup>
-							<DropdownMenuLabel className="text-neutral-600 text-xs font-medium capitalize">
+							<DropdownMenuLabel className="text-secondary text-xs font-medium capitalize">
 								Actions
 							</DropdownMenuLabel>
 							<DropdownMenuItem
@@ -484,7 +484,7 @@ const DropdownMenuAction = (props: DropdownMenuActionProps) => {
 										<Trash className="hover:text-destructive" />
 										Delete
 									</div>
-									<span className="text-gray-400">Del</span>
+									<span className="text-neutral-400">Del</span>
 								</div>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>

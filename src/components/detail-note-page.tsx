@@ -12,9 +12,13 @@ import DetailNotePageContainer from "./detail-note-page-container";
 import RequestPage from "./request-page";
 import { setLastWorkspaceInLocalStorage } from "@/utils/workspace";
 import { ApiNoteDetailResponse } from "@/types/response";
+import { TNotePermission } from "@/types/note.type";
 
 const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
 	const [folderExistsToOpen, setFolderExistsToOpen] = useState<TFolder[]>([]);
+	const [permissionInNote, setPermissionInNote] = useState<
+		TNotePermission | undefined
+	>();
 
 	const { fetchDataTree, setFoldersDefaultOpen } = useFolderState();
 	const { setCurrentWorkspace, currentWorkspace } = useWorkspace();
@@ -24,6 +28,7 @@ const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
 		setDifferentNotesPublished,
 		errorNote,
 		setErrorNote,
+		setThreadComments,
 	} = useNote();
 
 	const [loading, setLoading] = useState<boolean>(true);
@@ -50,9 +55,17 @@ const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
 
 				if (res.note) {
 					setCurrentNote(res.note);
+					if (res.note_comments) {
+						setThreadComments(res.note_comments);
+					}
 				}
 				if (res.folder) {
 					setFolderExistsToOpen(res.folder.folders_breadcrumb);
+				}
+				if (res.note) {
+					setPermissionInNote(
+						res.note.permission || res.note.status_permission
+					);
 				}
 				if (
 					res.workspace &&
@@ -90,6 +103,7 @@ const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
 			setDifferentNotesPublished,
 			currentWorkspace,
 			setErrorNote,
+			setThreadComments,
 		]
 	);
 
@@ -127,7 +141,11 @@ const DetailNotePage = ({ slug, token }: { slug: string; token?: string }) => {
 
 	return (
 		<DetailNotePageContainer note={currentNote} token={token} loading={loading}>
-			<MyEditor editorStateInitial={currentNote?.content} note={currentNote} />
+			<MyEditor
+				editorStateInitial={currentNote?.content}
+				note={currentNote}
+				permissionInNote={permissionInNote}
+			/>
 		</DetailNotePageContainer>
 	);
 };

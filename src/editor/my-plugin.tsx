@@ -24,120 +24,137 @@ import CodeActionMenuPlugin from "./plugin/code-action-plugin/code-action-pluin"
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import TableHoverActionsPlugin from "./plugin/table-hover-action-plugin";
 import TableActionMenuPlugin from "./plugin/table-action-plugin";
+import { ClearEditorPlugin } from "@lexical/react/LexicalClearEditorPlugin";
+import LexicalAutoLinkPlugin from "./plugin/auto-link-plugin";
+import { TNotePermission } from "@/types/note.type";
 
 const DraggableBlockPlugin = dynamic(
-  () => import("./plugin/draggable-plugin/draggable-block-plugin"),
-  { ssr: false }
+	() => import("./plugin/draggable-plugin/draggable-block-plugin"),
+	{ ssr: false }
 );
 
 const TableCellResizerPlugin = dynamic(
-  () => import("./plugin/table-resizer-plugin"),
-  { ssr: false }
+	() => import("./plugin/table-resizer-plugin"),
+	{ ssr: false }
 );
 
-const MyPlugin = ({ editable = true }: { editable?: boolean }) => {
-  const {
-    activeEditor,
-    toolbarState: { blockType },
-  } = useToolbarState();
+const CommentPlugin = dynamic(
+	() => import("./plugin/comment-plugin/comment-plugin"),
+	{ ssr: false }
+);
 
-  const [floatingAnchorElement, setFloatingAnchorElement] =
-    useState<HTMLDivElement>();
-  const [isEditLink, setIsEditLink] = useState(false);
-  const [openMenuDrag, setOpenMenuDrag] = useState(false);
+const MyPlugin = ({
+	editable = true,
+	permissionInNote,
+}: {
+	editable?: boolean;
+	permissionInNote?: TNotePermission;
+}) => {
+	const {
+		activeEditor,
+		toolbarState: { blockType },
+	} = useToolbarState();
 
-  const onRef = (_element: HTMLDivElement | null) => {
-    if (_element) {
-      setFloatingAnchorElement(_element);
-    }
-  };
+	const [floatingAnchorElement, setFloatingAnchorElement] =
+		useState<HTMLDivElement>();
+	const [isEditLink, setIsEditLink] = useState(false);
+	const [openMenuDrag, setOpenMenuDrag] = useState(false);
 
-  useEffect(() => {
-    if (activeEditor) {
-      activeEditor.setEditable(editable);
-    }
-  }, [editable, activeEditor]);
+	const onRef = (_element: HTMLDivElement | null) => {
+		if (_element) {
+			setFloatingAnchorElement(_element);
+		}
+	};
 
-  return (
-    <div className="editor-container">
-      {editable && (
-        <ToolbarPlugin editor={activeEditor} setIsEditLink={setIsEditLink} />
-      )}
-      <div className="max-w-4xl mx-auto w-full h-full relative bg-white">
-        <RichTextPlugin
-          contentEditable={
-            <div
-              ref={(e) => {
-                onRef(e);
-              }}
-            >
-              <ContentEditable
-                className={"editor-input"}
-                aria-placeholder={""}
-                placeholder={
-                  <div className="editor-placeholder">
-                    {<div>Write somthing here..., press {"/"} for command</div>}
-                  </div>
-                }
-              />
-            </div>
-          }
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <HistoryPlugin />
-        <AutoFocusPlugin defaultSelection={"rootStart"} />
+	useEffect(() => {
+		if (activeEditor) {
+			activeEditor.setEditable(editable);
+		}
+	}, [editable, activeEditor]);
 
-        <ListPlugin />
-        <CodeHighlightShikiPlugin />
-        {/* <LexicalAutoLinkPlugin /> */}
-        {/* <SelectionAlwaysOnDisplay /> */}
-        <LinkPlugin />
-        <MarkDownShortcutPlugin />
-        <TabIndentationPlugin />
-        <ImagePlugin />
-        <DragDropPaste />
-        <TablePlugin hasHorizontalScroll hasCellMerge />
-        <TableCellResizerPlugin />
+	return (
+		<div className="editor-container">
+			{editable && (
+				<ToolbarPlugin editor={activeEditor} setIsEditLink={setIsEditLink} />
+			)}
+			<div className="max-w-4xl mx-auto w-full h-full relative bg-white">
+				<RichTextPlugin
+					contentEditable={
+						<div
+							ref={(e) => {
+								onRef(e);
+							}}
+						>
+							<ContentEditable
+								className={"editor-input"}
+								aria-placeholder={""}
+								placeholder={
+									<div className="editor-placeholder">
+										{<div>Write somthing here..., press {"/"} for command</div>}
+									</div>
+								}
+							/>
+						</div>
+					}
+					ErrorBoundary={LexicalErrorBoundary}
+				/>
+				<HistoryPlugin />
+				<AutoFocusPlugin defaultSelection={"rootStart"} />
 
-        {blockType !== "code" && <ComponentPickerPlugin />}
+				<ListPlugin />
+				<CodeHighlightShikiPlugin />
+				{/* <LexicalAutoLinkPlugin /> */}
+				{/* <SelectionAlwaysOnDisplay /> */}
+				{/* <ClearEditorPlugin />
+				<LexicalAutoLinkPlugin /> */}
+				<LinkPlugin />
+				<MarkDownShortcutPlugin />
+				<TabIndentationPlugin />
+				<ImagePlugin />
+				<DragDropPaste />
+				<TablePlugin hasHorizontalScroll hasCellMerge />
+				<TableCellResizerPlugin />
 
-        {floatingAnchorElement && editable && (
-          <>
-            {!isEditLink && (
-              <DraggableBlockPlugin
-                anchorElem={floatingAnchorElement}
-                openMenuDrag={openMenuDrag}
-                setOpenMenuDrag={setOpenMenuDrag}
-              />
-            )}
-            <FloatingToolbarPlugin
-              anchorElem={floatingAnchorElement}
-              isEditLink={isEditLink}
-              setIsEditLink={setIsEditLink}
-              editor={activeEditor}
-            />
-            <FloatingEditLinkPlugin
-              anchorElem={floatingAnchorElement}
-              isEditLink={isEditLink}
-              setIsEditLink={setIsEditLink}
-            />
-            {!openMenuDrag && (
-              <ClickOutSidePlugin anchorElem={floatingAnchorElement} />
-            )}
-            <TableHoverActionsPlugin anchorElem={floatingAnchorElement} />
-            <TableActionMenuPlugin
-              anchorElem={floatingAnchorElement}
-              cellMerge
-            />
-          </>
-        )}
-        {floatingAnchorElement && (
-          <CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
-        )}
-        <SelectionCustomPlugin />
-      </div>
-    </div>
-  );
+				{blockType !== "code" && <ComponentPickerPlugin />}
+
+				{floatingAnchorElement && editable && (
+					<>
+						{!isEditLink && (
+							<DraggableBlockPlugin
+								anchorElem={floatingAnchorElement}
+								openMenuDrag={openMenuDrag}
+								setOpenMenuDrag={setOpenMenuDrag}
+							/>
+						)}
+						<FloatingToolbarPlugin
+							anchorElem={floatingAnchorElement}
+							isEditLink={isEditLink}
+							setIsEditLink={setIsEditLink}
+							editor={activeEditor}
+						/>
+						<FloatingEditLinkPlugin
+							anchorElem={floatingAnchorElement}
+							isEditLink={isEditLink}
+							setIsEditLink={setIsEditLink}
+						/>
+						{!openMenuDrag && (
+							<ClickOutSidePlugin anchorElem={floatingAnchorElement} />
+						)}
+						<TableHoverActionsPlugin anchorElem={floatingAnchorElement} />
+						<TableActionMenuPlugin
+							anchorElem={floatingAnchorElement}
+							cellMerge
+						/>
+					</>
+				)}
+				{floatingAnchorElement && (
+					<CodeActionMenuPlugin anchorElem={floatingAnchorElement} />
+				)}
+				<SelectionCustomPlugin />
+				<CommentPlugin permissionInNote={permissionInNote} />
+			</div>
+		</div>
+	);
 };
 
 export default MyPlugin;
